@@ -47,13 +47,8 @@ export class Update extends plugin {
       await this.reply(`正在${force ? '强制' : ''}更新群友开盒…`)
 
       // 强制更新：丢弃本地对已跟踪文件的修改（config/config.yaml 不受 git 管理，不会被覆盖）
-      let ret
-      if (force) {
-        ret = await git('fetch', '--all')
-        if (!ret.error) ret = await git('reset', '--hard', '@{u}')
-      } else {
-        ret = await git('pull', '--ff-only')
-      }
+      const dirty = force && !!(await git('status', '--porcelain', '--untracked-files=no')).stdout
+      const ret = force ? await this.forceSync() : await git('pull', '--ff-only')
       if (ret.error) {
         const detail = ret.stderr || ret.error.message
         logger.error('[群友开盒] 更新失败', detail)
@@ -66,7 +61,13 @@ export class Update extends plugin {
       const newHead = await this.head()
       const time = (await git('log', '-1', '--date=format:%Y-%m-%d %H:%M', '--pretty=%cd')).stdout || '未知'
       if (oldHead === newHead) {
-        await this.reply(`群友开盒已是最新版本\n最后更新：${time}`)
+        if (!dirty) {
+          await this.reply(`群友开盒已是最新版本\n最后更新：${time}`)
+          return true
+        }
+        // 版本没变但本地改动被丢弃，运行中的仍是改动后的代码，需要重启
+        await this.reply(`已丢弃本地对插件代码的改动，恢复为最新版本\n最后更新：${time}`)
+        await this.restart()
         return true
       }
 
@@ -83,6 +84,28 @@ export class Update extends plugin {
       updating = false
     }
     return true
+  }
+
+  /**
+   * 强制与远端对齐：先 fetch 再直接 reset 到远端分支（不经过 rebase，未跟踪的同名文件也会被覆盖）。
+   * 没有上游分支（如 detached HEAD）时，退回远端默认分支并修复跟踪关系。
+   */
+  async forceSync () {
+    let ret = await git('fetch', '--all')
+    if (ret.error) return ret
+    if (!(await git('rev-parse', '--symbolic-full-name', '@{u}')).error) return git('reset', '--hard', '@{u}')
+
+    let remoteHead = await git('rev-parse', '--abbrev-ref', 'origin/HEAD')
+    if (remoteHead.error) {
+      await git('remote', 'set-head', 'origin', '--auto')
+      remoteHead = await git('rev-parse', '--abbrev-ref', 'origin/HEAD')
+      if (remoteHead.error) return remoteHead
+    }
+    const ref = remoteHead.stdout // 如 origin/main
+    const branch = ref.replace(/^origin\//, '')
+    ret = await git('checkout', '-f', '-B', branch, ref)
+    if (!ret.error) ret = await git('branch', `--set-upstream-to=${ref}`, branch)
+    return ret
   }
 
   async head () {
