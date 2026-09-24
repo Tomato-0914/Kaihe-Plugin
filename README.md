@@ -40,7 +40,7 @@ fc-cache -fv
 两种方式任选：
 
 - **锅巴面板**：装了 [Guoba-Plugin](https://github.com/guoba-yunzai/guoba-plugin) 的话，直接在锅巴里找到「群友开盒」修改
-- **手动编辑**：`plugins/Kaihe-Plugin/config/config.yaml`（首次加载时自动生成），保存即生效，无需重启
+- **手动编辑**：`plugins/Kaihe-Plugin/config/config.yaml`（首次加载时自动生成），保存即热重载（控制台会提示），无需重启；格式写错时继续使用上一次的配置
 
 两种方式都会**保留配置文件里的注释**。插件更新后，默认配置中新增的配置项会自动补进 `config.yaml`，已有的设置不受影响。
 `config.yaml` 不受 git 管理，`#开盒强制更新` 也不会覆盖它。
@@ -50,7 +50,7 @@ AI 使用任意 OpenAI 兼容接口，填好 `ai.apiKey` 即可；不填则用�
 ## 数据从哪来
 
 - **基础档案**：`get_group_member_info`（身份、等级、入群时间、最后发言）
-- **行为分析 / AI 上下文**：`get_group_msg_history` 拉取最近 N 条群消息，并与插件本地记录合并
+- **行为分析 / AI 上下文**：`get_group_msg_history` 向前翻页拉取群聊历史，直到取到该成员最近 `userSample` 条消息（默认 100，最多翻 `maxPages` 页），并与插件本地记录合并；群聊占比按最近 `sampleSize` 条群消息计算
 - **作息、曾用名、头像变更**：插件加载后被动记录，存于 Redis（`kaihe:*`），**装得越久越准**
 - 头像变更通过比对头像指纹判断，成员发言时按 `avatar.intervalHours` 间隔检测
 

@@ -47,6 +47,19 @@ function clipSentence (s, n) {
   return i >= head.length / 2 ? head.slice(0, i + 1) : clip(s, n)
 }
 
+/** 获取接口可用的模型 id 列表（OpenAI 兼容 GET /models） */
+export async function listModels (baseURL, apiKey) {
+  const url = `${String(baseURL).replace(/\/+$/, '')}/models`
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    signal: AbortSignal.timeout(15000)
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 200)}`)
+  const json = await res.json()
+  const list = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : []
+  return [...new Set(list.map(m => m?.id).filter(Boolean))].sort()
+}
+
 /** 调用 AI 生成标题 / 记者手记 / 趣味称号；失败抛错，由调用方回退模板 */
 export async function writeStory (ai, facts, mine, sample, tz) {
   const url = `${String(ai.baseURL).replace(/\/+$/, '')}/chat/completions`

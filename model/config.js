@@ -8,7 +8,8 @@ const DEF = path.join(ROOT, 'config', 'config_default.yaml')
 const USER = path.join(ROOT, 'config', 'config.yaml')
 
 let cache = null
-let cacheMtime = 0
+let cacheSig = ''
+let cacheText = null
 let synced = false
 
 function merge (base, over) {
@@ -53,25 +54,62 @@ function syncDefaults () {
   }
 }
 
-/** 读取配置（config.yaml 覆盖默认值，文件修改后自动重新加载） */
+const signature = () => {
+  const st = fs.statSync(USER)
+  return `${st.mtimeMs}:${st.size}`
+}
+
+/** 重新读取 config.yaml；内容没变不重复解析，格式错误时保留上一份可用配置 */
+function load () {
+  const sig = signature()
+  const text = fs.readFileSync(USER, 'utf8')
+  cacheSig = sig
+  if (cache && text === cacheText) return
+  const first = !cache
+  cacheText = text
+
+  const def = YAML.parse(fs.readFileSync(DEF, 'utf8')) || {}
+  let user
+  try {
+    user = YAML.parse(text) || {}
+  } catch (err) {
+    logger.error(`[群友开盒] config.yaml 格式错误，${first ? '已使用默认配置' : '继续使用上一次的配置'}：${err.message}`)
+    if (!first) return
+    user = {}
+  }
+  cache = merge(def, user)
+  if (!first) logger.mark('[群友开盒] config.yaml 已更新，配置已热重载')
+}
+
+/** 监听配置目录（兼容编辑器“写临时文件再改名”的保存方式），变更后立即重载 */
+function watch () {
+  if (global.__kaiheConfigWatcher) return
+  let timer = null
+  try {
+    global.__kaiheConfigWatcher = fs.watch(path.dirname(USER), (event, file) => {
+      if (file && file !== 'config.yaml') return
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        try { if (fs.existsSync(USER)) load() } catch (err) { logger.error(`[群友开盒] 重载配置失败：${err.message}`) }
+      }, 200)
+    })
+    global.__kaiheConfigWatcher.on('error', () => { global.__kaiheConfigWatcher = null })
+    global.__kaiheConfigWatcher.unref?.()
+  } catch (err) {
+    logger.debug(`[群友开盒] 无法监听配置目录，改为读取时检查：${err.message}`)
+  }
+}
+
+/** 读取配置（config.yaml 覆盖默认值；文件改动后自动热重载，无需重启） */
 export function getConfig () {
   if (!fs.existsSync(USER)) fs.copyFileSync(DEF, USER)
   if (!synced) {
     synced = true
     syncDefaults()
+    watch()
   }
-  const mtime = fs.statSync(USER).mtimeMs
-  if (cache && mtime === cacheMtime) return cache
-
-  const def = YAML.parse(fs.readFileSync(DEF, 'utf8')) || {}
-  let user = {}
-  try {
-    user = YAML.parse(fs.readFileSync(USER, 'utf8')) || {}
-  } catch (err) {
-    logger.error(`[群友开盒] config.yaml 格式错误，已使用默认配置：${err.message}`)
-  }
-  cache = merge(def, user)
-  cacheMtime = mtime
+  // 兜底：监听不可用时，按修改时间 + 大小判断是否需要重载
+  if (!cache || signature() !== cacheSig) load()
   return cache
 }
 

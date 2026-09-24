@@ -1,3 +1,6 @@
+/** 模型候选项，由「获取可用模型」按钮原地更新；锅巴每次拉取插件列表都会读取到最新内容 */
+export const modelOptions = []
+
 const group = label => ({ label, component: 'SOFT_GROUP_BEGIN' })
 const num = (field, label, helpMessage, props = {}) => ({
   field, label, bottomHelpMessage: helpMessage, component: 'InputNumber', componentProps: { min: 0, ...props }
@@ -15,7 +18,9 @@ export default [
   { field: 'quote', label: '引用触发消息', bottomHelpMessage: '发送图片时是否引用触发消息', component: 'Switch' },
   num('scale', '渲染缩放', '1 = 760px 宽；1.5 更清晰，图片体积稍大', { min: 0.5, max: 3, step: 0.1 }),
   { field: 'timezone', label: '时区', bottomHelpMessage: '决定日期与作息统计，如 Asia/Shanghai', component: 'Input' },
-  num('sampleSize', '行为分析取样', '拉取本群最近多少条消息', { min: 10, max: 1000, addonAfter: '条' }),
+  num('sampleSize', '群聊取样', '本群最近多少条消息，用于群聊占比与 AI 上下文', { min: 10, max: 1000, addonAfter: '条' }),
+  num('userSample', '本人取样', '向前翻页直到取到该成员最近多少条消息，用于发言构成与作息', { min: 10, max: 1000, addonAfter: '条' }),
+  num('maxPages', '翻页上限', '每页 100 条；成员很少发言时最多翻这么多页', { min: 1, max: 200, addonAfter: '页' }),
 
   group('本地记录'),
   num('record.userMax', '每人保留发言', '作息 / 构成统计用', { min: 10, addonAfter: '条' }),
@@ -39,8 +44,18 @@ export default [
   {
     field: 'ai.model',
     label: '模型',
-    bottomHelpMessage: '填模型 id（非显示名），如 deepseek-flash',
-    component: 'Input'
+    bottomHelpMessage: '填模型 id（非显示名），可手动输入，也可在下拉中选择',
+    component: 'AutoComplete',
+    componentProps: { options: modelOptions, filterOption: true, allowClear: true, placeholder: 'deepseek-flash' }
+  },
+  {
+    field: '_fetchModels',
+    label: '模型列表',
+    bottomHelpMessage: '按当前填写的接口地址和 API Key 获取，无需先保存；获取后刷新页面即可在「模型」下拉中选择',
+    component: 'GButtons',
+    componentProps: {
+      buttons: [{ label: '获取可用模型', type: 'primary', action: 'fetchModels', args: ['#{ai.baseURL}', '#{ai.apiKey}'] }]
+    }
   },
   num('ai.temperature', '温度', '越高越放飞', { max: 2, step: 0.1 }),
   num('ai.timeout', '请求超时', '', { min: 5, addonAfter: '秒' }),

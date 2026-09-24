@@ -22,46 +22,70 @@ export async function getMember (e, uid) {
 }
 
 /**
- * 拉取群最近 count 条“真人”消息（get_group_msg_history，LLOneBot / NapCat / go-cqhttp 均支持）
- * 机器人自己的消息不计数；单次返回不足时自动向前翻页，最多 10 轮
+ * 翻页锚点：各协议端对 get_group_msg_history 的 message_seq 参数理解不同
+ * （NapCat / LLOneBot 认 message_id，go-cqhttp / Lagrange 认真实 seq），依次尝试并记住可用的字段
  */
-export async function getHistory (e, count = 150) {
+const ANCHORS = ['message_id', 'message_seq', 'real_id']
+let anchorField = null
+
+/**
+ * 向前翻页拉取群聊历史（get_group_msg_history，每页 100 条）
+ * 群聊真人消息 ≥ groupCount 且目标成员消息 ≥ userCount 时停止；最多 maxPages 页；没有更早的消息时停止
+ */
+export async function getHistory (e, { groupCount = 150, uid, userCount = 0, maxPages = 30 } = {}) {
   const bot = botOf(e)
   const all = new Map()
   let human = 0
-  let rounds = 0
-  let seq
-  while (rounds < 10 && human < count) {
-    let msgs
-    try {
-      const r = await bot.sendApi('get_group_msg_history', {
-        group_id: e.group_id,
-        message_seq: seq,
-        count: 100
-      })
-      msgs = unwrap(r, 'messages')?.messages
-    } catch (err) {
-      logger.warn(`[群友开盒] get_group_msg_history 失败：${err.message}`)
-      break
-    }
-    rounds++
-    if (!Array.isArray(msgs) || !msgs.length) break
+  let mine = 0
+  let pages = 0
+  let oldest = null
 
+  const fetchPage = async seq => {
+    pages++
+    const r = await bot.sendApi('get_group_msg_history', { group_id: e.group_id, message_seq: seq, count: 100 })
+    const msgs = unwrap(r, 'messages')?.messages
+    return Array.isArray(msgs) ? msgs : []
+  }
+  /** 收录一页，返回新增条数 */
+  const absorb = msgs => {
     let added = 0
-    let oldest
     for (const m of msgs) {
       const id = String(m.message_id ?? m.message_seq)
-      if (!all.has(id)) {
-        all.set(id, m)
-        added++
-        if (String(m.user_id ?? m.sender?.user_id) !== String(e.self_id)) human++
-      }
+      if (all.has(id)) continue
+      all.set(id, m)
+      added++
+      const u = String(m.user_id ?? m.sender?.user_id)
+      if (u !== String(e.self_id)) human++
+      if (uid && u === String(uid)) mine++
       if (!oldest || Number(m.time) < Number(oldest.time)) oldest = m
     }
-    if (!added) break
-    seq = oldest.message_id ?? oldest.message_seq
+    return added
   }
-  logger.info(`[群友开盒] 拉取历史 ${rounds} 轮，共 ${all.size} 条，其中真人消息 ${human} 条`)
+
+  try {
+    absorb(await fetchPage(undefined))
+    while (oldest && pages < maxPages && (human < groupCount || mine < userCount)) {
+      const fields = anchorField ? [anchorField, ...ANCHORS.filter(f => f !== anchorField)] : ANCHORS
+      const tried = new Set()
+      let added = 0
+      for (const f of fields) {
+        const seq = oldest[f]
+        if (seq == null || seq === '' || tried.has(String(seq))) continue
+        tried.add(String(seq))
+        added = absorb(await fetchPage(seq))
+        if (added) {
+          if (anchorField !== f) logger.debug(`[群友开盒] 翻页锚点使用 ${f}`)
+          anchorField = f
+          break
+        }
+        if (pages >= maxPages) break
+      }
+      if (!added) break // 没有更早的消息，或协议端不支持翻页
+    }
+  } catch (err) {
+    logger.warn(`[群友开盒] get_group_msg_history 失败：${err.message}`)
+  }
+  logger.info(`[群友开盒] 拉取历史 ${pages} 页，共 ${all.size} 条，真人消息 ${human} 条${uid ? `，目标成员 ${mine} 条` : ''}`)
   return [...all.values()].sort((a, b) => a.time - b.time)
 }
 

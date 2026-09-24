@@ -1,4 +1,5 @@
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { ROOT, getConfig } from './config.js'
 import { fromOB } from './message.js'
 import { getMember, getHistory, avatarDataURI } from './collector.js'
@@ -66,10 +67,12 @@ export async function buildGazette (e, uid) {
   const tz = c.timezone || 'Asia/Shanghai'
   const g = e.group_id
   const T = now()
+  const groupSize = Number(c.sampleSize) || 150
+  const userSize = Number(c.userSample) || 100
 
   const [member, history, userLog, avatar] = await Promise.all([
     getMember(e, uid),
-    getHistory(e, Number(c.sampleSize) || 150),
+    getHistory(e, { groupCount: groupSize, uid, userCount: userSize, maxPages: Number(c.maxPages) || 30 }),
     getUserLog(g, uid),
     avatarDataURI(uid)
   ])
@@ -84,15 +87,18 @@ export async function buildGazette (e, uid) {
   ])
 
   /* ---------- 样本 ---------- */
-  let sample = history.map(m => fromOB(m, e.self_id)).filter(m => m.u && m.u != e.self_id).slice(-(Number(c.sampleSize) || 150))
+  // 群聊样本：最近 groupSize 条真人消息（群聊占比、AI 上下文）
+  const human = history.map(m => fromOB(m, e.self_id)).filter(m => m.u && m.u != e.self_id)
+  let sample = human.slice(-groupSize)
   if (sample.length < 10) {
-    const local = await getGroupLog(g, Number(c.sampleSize) || 150)
+    const local = await getGroupLog(g, groupSize)
     if (local.length > sample.length) sample = local
   }
   const sampleMine = sample.filter(m => m.u == uid)
+  // 本人样本：翻页取到的该成员消息 + 本地记录，去重后取最近 userSize 条（发言构成、作息）
   const merged = new Map()
-  for (const m of [...userLog, ...sampleMine]) merged.set(m.id || `${m.t}:${m.tx}`, m)
-  const mine = [...merged.values()].sort((a, b) => a.t - b.t)
+  for (const m of [...userLog, ...human.filter(m => m.u == uid), ...sampleMine]) merged.set(m.id || `${m.t}:${m.tx}`, m)
+  const mine = [...merged.values()].sort((a, b) => a.t - b.t).slice(-userSize)
 
   /* ---------- 行为统计 ---------- */
   const cnt = { text: 0, image: 0, face: 0, record: 0, other: 0 }
@@ -191,7 +197,10 @@ export async function buildGazette (e, uid) {
 
   let story = null
   if (c.ai?.enable && c.ai.apiKey) {
-    const key = K.ai(g, uid)
+    // 缓存键带上 AI 配置指纹：改了模型 / 温度等设置后旧稿件自动失效
+    const { baseURL, model, temperature, contextSize, userSize: aiUserSize } = c.ai
+    const fp = crypto.createHash('md5').update(JSON.stringify([baseURL, model, temperature, contextSize, aiUserSize])).digest('hex').slice(0, 8)
+    const key = `${K.ai(g, uid)}:${fp}`
     try { story = JSON.parse(await redis.get(key) || 'null') } catch {}
     if (!story) {
       try {
