@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { getConfig, groupEnabled } from './config.js'
 import { fromEvent } from './message.js'
+import { avatarMeta } from './collector.js'
 import { K, now } from './utils.js'
 
 const parse = list => list.map(s => { try { return JSON.parse(s) } catch { return null } }).filter(Boolean)
@@ -43,12 +44,20 @@ export async function trackName (g, u, name) {
   if (old) {
     await redis.lPush(K.names(g, u), JSON.stringify({ name: old, t: now() }))
     await redis.lTrim(K.names(g, u), 0, 19)
+  } else {
+    // 首次入档时间：用于“入档以来未曾改名”
+    await redis.set(K.nameSince(g, u), String(now()), { NX: true })
   }
 }
 
+export async function getNameSince (g, u) {
+  return Number(await redis.get(K.nameSince(g, u))) || 0
+}
+
 /**
- * 头像变更检测：下载 100px 头像计算指纹，与上次比对
- * 返回 { hash, count, since, changedAt, checkedAt }
+ * 头像变更检测：优先比对 CDN 响应头 X-BCheck（上传时间戳，不受图片重新压缩影响），
+ * 旧记录没有 X-BCheck 时退回比对 100px 头像的 MD5
+ * 返回 { hash, bcheck, count, since, changedAt, checkedAt }
  */
 export async function checkAvatar (u, intervalHours = 6) {
   const key = K.avatar(u)
@@ -60,10 +69,16 @@ export async function checkAvatar (u, intervalHours = 6) {
   const res = await fetch(`https://q1.qlogo.cn/g?b=qq&nk=${u}&s=100`, { signal: AbortSignal.timeout(8000) })
   if (!res.ok) return info
   const hash = crypto.createHash('md5').update(Buffer.from(await res.arrayBuffer())).digest('hex')
+  const meta = avatarMeta(res.headers)
 
-  const upd = { checkedAt: String(t) }
-  if (!info.hash) Object.assign(upd, { hash, count: '0', since: String(t) })
-  else if (info.hash !== hash) Object.assign(upd, { hash, count: String(Number(info.count || 0) + 1), changedAt: String(t) })
+  const upd = { checkedAt: String(t), hash }
+  if (meta.bcheck) upd.bcheck = meta.bcheck
+  if (!info.hash) {
+    Object.assign(upd, { count: '0', since: String(t) })
+  } else if (info.bcheck && meta.bcheck ? info.bcheck !== meta.bcheck : info.hash !== hash) {
+    // 自定义头像取真实上传时间，否则取发现变化的时间
+    Object.assign(upd, { count: String(Number(info.count || 0) + 1), changedAt: String(meta.ts || t) })
+  }
   await redis.hSet(key, upd)
   return { ...info, ...upd }
 }

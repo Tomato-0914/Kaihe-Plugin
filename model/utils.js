@@ -4,6 +4,7 @@ export const K = {
   groupLog: g => `kaihe:grp:${g}`,
   name: (g, u) => `kaihe:name:${g}:${u}`,
   names: (g, u) => `kaihe:names:${g}:${u}`,
+  nameSince: (g, u) => `kaihe:namesince:${g}:${u}`,
   avatar: u => `kaihe:avatar:${u}`,
   ai: (g, u) => `kaihe:ai:${g}:${u}`,
   cd: (g, u) => `kaihe:cd:${g}:${u}`,

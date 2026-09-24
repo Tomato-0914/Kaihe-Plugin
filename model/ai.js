@@ -27,7 +27,9 @@ function buildPrompt (f, mine, sample, ai, tz) {
 - 发言构成：${f.comp}（本人记录 ${f.mine} 条）
 - 回复 ${f.reply} 次，@他人 ${f.at} 次，语音 ${f.voice} 条
 - 作息：峰值 ${f.peakRange}，作息特征「${f.schedule}」
-- 曾用名（由新到旧，均早于现用名）：${f.names.length ? f.names.join('、') : '无'}；头像变更：${f.avatarChanges ?? '未知'} 次
+- 曾用名（由新到旧，均早于现用名）：${f.names.length ? f.names.join('、') : '无'}
+- 现用名：${f.nameSet || '未知'}
+- 现用头像：${f.avatarSet || '未知'}；插件入档后观测到更换头像 ${f.avatarChanges ?? '未知'} 次
 
 【本人近期发言】
 ${own.map(line).join('\n') || '（暂无）'}

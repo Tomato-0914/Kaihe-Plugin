@@ -2,8 +2,8 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { ROOT, getConfig } from './config.js'
 import { fromOB } from './message.js'
-import { getMember, getHistory, avatarDataURI } from './collector.js'
-import { getUserLog, getGroupLog, getNameHistory, trackName, checkAvatar } from './recorder.js'
+import { getMember, getHistory, getAvatar } from './collector.js'
+import { getUserLog, getGroupLog, getNameHistory, getNameSince, trackName, checkAvatar } from './recorder.js'
 import { writeStory } from './ai.js'
 import {
   K, now, pad, escapeHtml, tzParts, dayNum, hourOf, fmtDate, fmtDateCN, fmtHM, fmtShort, ago, cnNum, percents
@@ -19,6 +19,8 @@ const CATS = [
   { key: 'other', name: '其他', color: '#cbb591', fg: '#2b1d14' }
 ]
 const ROLE = { owner: '群主', admin: '管理员', member: '群成员' }
+/** 老号的头像上传时间普遍集中在 2019-04-15，疑为 CDN 迁移时间，早于此的只能说明“至少从那时起” */
+const AVATAR_MIGRATED = Date.UTC(2019, 3, 16) / 1000
 const RANKS = [[80, '群聊之星'], [60, '骨干成员'], [40, '活跃分子'], [20, '普通成员'], [0, '潜水员']]
 const SCHEDULE = [[0, 5, '修仙党'], [5, 8, '早起鸟'], [8, 12, '上午摸鱼'], [12, 14, '午休党'], [14, 18, '下午茶'], [18, 21, '晚饭后'], [21, 24, '夜猫子']]
 const HEADLINES = {
@@ -74,14 +76,15 @@ export async function buildGazette (e, uid) {
     getMember(e, uid),
     getHistory(e, { groupCount: groupSize, uid, userCount: userSize, maxPages: Number(c.maxPages) || 30 }),
     getUserLog(g, uid),
-    avatarDataURI(uid)
+    getAvatar(uid)
   ])
   if (!member && !userLog.length) return null
 
   const name = member?.card || member?.nickname || userLog[0]?.n || String(uid)
   await trackName(g, uid, name)
-  const [names, avatarInfo, issue] = await Promise.all([
+  const [names, nameSince, avatarInfo, issue] = await Promise.all([
     getNameHistory(g, uid),
+    getNameSince(g, uid),
     c.avatar?.enable ? checkAvatar(uid, 1).catch(() => null) : null,
     redis.incr(K.issue)
   ])
@@ -175,13 +178,48 @@ export async function buildGazette (e, uid) {
   }
 
   /* ---------- 形象 / 曾用名 ---------- */
-  let avatarHtml = '档案室尚未建立该成员的形象档案。'
-  if (avatarInfo?.since) {
-    avatarHtml = Number(avatarInfo.count) > 0
-      ? `据档案室记录，该成员自入档以来共计变更头像 <b>${avatarInfo.count}</b> 次，最近一次档案更新于 ${fmtShort(Number(avatarInfo.changedAt), tz)}。`
-      : `该成员自 ${fmtShort(Number(avatarInfo.since), tz)} 入档以来尚未变更头像，形象十分稳定。`
+  // 现用头像：自定义头像可从 CDN 取到上传时间；2019-04-16 之前的时间多为 CDN 迁移时间，只能说明“至少从那时起”
+  let avatarSet = '未知'
+  const parts = []
+  if (avatar.kind === 'custom' && avatar.ts) {
+    const used = dayNum(T, tz) - dayNum(avatar.ts, tz)
+    if (avatar.ts < AVATAR_MIGRATED) {
+      avatarSet = `至少自 ${fmtDate(avatar.ts, tz)} 起沿用至今`
+      parts.push(`据档案室调取，该成员现用头像至少自 <b>${fmtDate(avatar.ts, tz)}</b> 起沿用至今，形象历久弥新。`)
+    } else if (used <= 0) {
+      avatarSet = '今日刚刚更换'
+      parts.push(`据档案室调取，该成员于今日 ${fmtHM(avatar.ts, tz)} 刚刚更换头像，新形象正在热映。`)
+    } else {
+      avatarSet = `${fmtDate(avatar.ts, tz)} 上传，已沿用 ${used} 天`
+      parts.push(`据档案室调取，该成员现用头像上传于 ${fmtShort(avatar.ts, tz)}，已沿用 <span class="nw"><b>${used}</b> 天</span>。`)
+    }
+  } else if (avatar.kind === 'system') {
+    avatarSet = '系统默认头像'
+    parts.push('据档案室调取，该成员使用系统默认头像，走的是朴素路线。')
   }
+  // 插件入档后自行观测到的更换次数
+  if (avatarInfo?.since) {
+    if (Number(avatarInfo.count) > 0) parts.push(`自入档以来共观测到更换头像 <span class="nw"><b>${avatarInfo.count}</b> 次</span>。`)
+    else if (!parts.length) parts.push(`该成员自 ${fmtShort(Number(avatarInfo.since), tz)} 入档以来尚未变更头像，形象十分稳定。`)
+  }
+  const avatarHtml = parts.join('') || '档案室尚未建立该成员的形象档案。'
   const nameList = names.slice(0, 3).map(n => ({ name: n.name, time: fmtShort(n.t, tz) }))
+
+  // 现用名启用时间：协议端不提供改名时间，取插件记录到上一个名字停用的时间（成员改名后下次发言时记录）
+  let nameSet = '未知'
+  let nameHtml = ''
+  const nameEsc = escapeHtml(name)
+  if (names.length) {
+    const ts = names[0].t
+    const used = dayNum(T, tz) - dayNum(ts, tz)
+    nameSet = used <= 0 ? '今日刚刚改名' : `${fmtDate(ts, tz)} 起启用，已使用 ${used} 天`
+    nameHtml = used <= 0
+      ? `据档案室记录，现用名「<b>${nameEsc}</b>」于今日 ${fmtHM(ts, tz)} 登记启用，墨迹未干。`
+      : `据档案室记录，现用名「<b>${nameEsc}</b>」于 ${fmtShort(ts, tz)} 登记启用，已使用 <span class="nw"><b>${used}</b> 天</span>。`
+  } else if (nameSince && dayNum(T, tz) > dayNum(nameSince, tz)) {
+    nameSet = `${fmtDate(nameSince, tz)} 入档以来未改名`
+    nameHtml = `该成员自 ${fmtShort(nameSince, tz)} 入档以来一直使用「<b>${nameEsc}</b>」，从未改名。`
+  }
 
   /* ---------- 文案：AI 优先，模板兜底 ---------- */
   const facts = {
@@ -192,7 +230,9 @@ export async function buildGazette (e, uid) {
     mine: mine.length, reply, at, voice: cnt.record,
     peakRange, schedule: schedule.label,
     names: names.slice(0, 3).map(n => n.name),
-    avatarChanges: avatarInfo?.count
+    avatarChanges: avatarInfo?.count,
+    avatarSet,
+    nameSet
   }
 
   let story = null
@@ -223,7 +263,7 @@ export async function buildGazette (e, uid) {
     name,
     headline: story?.headline || HEADLINES[rank],
     uid,
-    avatar,
+    avatar: avatar.src,
     role: facts.role,
     level,
     joinDate: facts.joinDate,
@@ -244,6 +284,7 @@ export async function buildGazette (e, uid) {
     honors: honors.slice(0, 6),
     avatarHtml,
     names: nameList,
-    namesMore: Math.max(0, names.length - nameList.length)
+    namesMore: Math.max(0, names.length - nameList.length),
+    nameHtml
   }
 }

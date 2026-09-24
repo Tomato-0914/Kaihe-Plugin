@@ -89,15 +89,29 @@ export async function getHistory (e, { groupCount = 150, uid, userCount = 0, max
   return [...all.values()].sort((a, b) => a.time - b.time)
 }
 
-/** 头像转 base64，避免渲染时网络慢导致空图 */
-export async function avatarDataURI (uid) {
+/**
+ * 解析 QQ 头像 CDN 响应头
+ * X-Info：real data = 自定义头像；real-sysimg-* = 系统默认头像；notexist = 无头像
+ * X-BCheck：「上传时间戳_类型」，自定义头像的时间即现用头像的上传时间（系统头像的时间不可靠）
+ */
+export function avatarMeta (headers) {
+  const info = headers.get('x-info') || ''
+  const bcheck = headers.get('x-bcheck') || ''
+  const kind = info === 'real data' ? 'custom' : info.startsWith('real-sysimg') ? 'system' : info.startsWith('notexist') ? 'none' : 'unknown'
+  const ts = kind === 'custom' ? Number(bcheck.split('_')[0]) || 0 : 0
+  return { kind, ts, bcheck }
+}
+
+/** 获取头像：转 base64 避免渲染时网络慢导致空图，并附带头像类型与上传时间 */
+export async function getAvatar (uid) {
   const url = `https://q1.qlogo.cn/g?b=qq&nk=${uid}&s=640`
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
-    if (!res.ok) return url
+    if (!res.ok) return { src: url, kind: 'unknown', ts: 0 }
     const type = res.headers.get('content-type') || 'image/jpeg'
-    return `data:${type};base64,${Buffer.from(await res.arrayBuffer()).toString('base64')}`
+    const src = `data:${type};base64,${Buffer.from(await res.arrayBuffer()).toString('base64')}`
+    return { src, ...avatarMeta(res.headers) }
   } catch {
-    return url
+    return { src: url, kind: 'unknown', ts: 0 }
   }
 }
