@@ -151,16 +151,27 @@ export async function buildGazette (e, uid) {
   }
 
   /* ---------- 活跃评分（满分 100） ---------- */
-  const recent7 = mine.filter(m => T - m.t < 7 * 86400).length
+  // 发言频率（40）：近 7 天日均发言，对数曲线，日均 100 条满分；
+  // 本人样本被 userSize 截断时（最早一条也在 7 天内），按样本实际覆盖的天数（至少 1 天）计算
+  const week = 7 * 86400
+  const span = mine.length >= userSize && mine.length ? Math.min(week, Math.max(86400, T - mine[0].t)) : week
+  const inSpan = mine.filter(m => T - m.t < span).length
+  const perDay = inSpan / (span / 86400)
+  const sSpeak = 40 * Math.min(1, Math.log1p(perDay) / Math.log1p(100))
+  // 群聊占比（25）：相对群内平均水平，达到平均的 4 倍满分
   const share = sample.length ? sampleMine.length / sample.length : 0
-  const idle = lastTs ? T - lastTs : Infinity
-  const score = Math.max(0, Math.min(100,
-    Math.min(40, Math.round(Math.sqrt(recent7) * 6)) + // 近 7 天发言量
-    Math.min(25, Math.round(share * 250)) + // 近期群聊占比
-    (idle < 3600 ? 20 : idle < 86400 ? 16 : idle < 3 * 86400 ? 12 : idle < 7 * 86400 ? 8 : idle < 30 * 86400 ? 4 : 0) + // 新鲜度
-    Math.min(15, Math.round(lvNum / 100 * 15)) // 群等级
-  ))
+  const speakers = new Set(sample.map(m => m.u)).size || 1
+  const sShare = 25 * Math.min(1, share * speakers / 4)
+  // 新鲜度（20）：距最后发言平滑衰减（1 小时 ≈ 20，1 天 ≈ 12，3 天 ≈ 4）
+  const idle = lastTs ? Math.max(0, T - lastTs) : Infinity
+  const sFresh = 20 * Math.exp(-idle / (2 * 86400))
+  // 群等级（15）
+  const sLevel = 15 * Math.min(1, lvNum / 100)
+  const score = Math.max(0, Math.min(100, Math.round(sSpeak + sShare + sFresh + sLevel)))
   const rank = RANKS.find(([min]) => score >= min)[1]
+  logger.info(`[群友开盒] ${uid} 活跃评分 ${score}：发言 ${sSpeak.toFixed(1)}/40（日均 ${perDay.toFixed(1)} 条）` +
+    ` + 占比 ${sShare.toFixed(1)}/25（${(share * 100).toFixed(1)}%，${speakers} 人发言）` +
+    ` + 新鲜 ${sFresh.toFixed(1)}/20 + 等级 ${sLevel.toFixed(1)}/15（原始 level=${JSON.stringify(member?.level)}）`)
 
   /* ---------- 荣誉 ---------- */
   const honors = []
