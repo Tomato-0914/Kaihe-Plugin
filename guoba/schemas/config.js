@@ -46,12 +46,13 @@ export default [
     label: '模型',
     bottomHelpMessage: '填模型 id（非显示名），可手动输入，也可在下拉中选择',
     component: 'AutoComplete',
-    componentProps: { options: modelOptions, filterOption: true, allowClear: true, placeholder: 'deepseek-flash' }
+    // 不按输入过滤：已填了模型时也能看到全部候选
+    componentProps: { options: modelOptions, filterOption: false, allowClear: true, placeholder: 'deepseek-flash' }
   },
   {
     field: '_fetchModels',
     label: '模型列表',
-    bottomHelpMessage: '按当前填写的接口地址和 API Key 获取，无需先保存；获取后刷新页面即可在「模型」下拉中选择',
+    bottomHelpMessage: '已保存 API Key 时会自动获取；更换接口或 Key 后可点此按当前填写的内容获取（无需先保存），获取后按 F5 刷新页面即可在「模型」下拉中选择',
     component: 'GButtons',
     componentProps: {
       buttons: [{ label: '获取可用模型', type: 'primary', action: 'fetchModels', args: ['#{ai.baseURL}', '#{ai.apiKey}'] }]
