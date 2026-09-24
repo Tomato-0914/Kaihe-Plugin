@@ -1,0 +1,50 @@
+# ==================== 群友开盒 配置 ====================
+# 首次加载会自动复制为 config.yaml，请修改 config.yaml（改完即时生效，无需重启）
+
+# 启用的群号，留空 [] 表示所有群，例：[123456, 654321]
+groups: []
+
+# 同一用户触发冷却（秒），主人不受限制
+cd: 60
+
+# 发送图片时是否引用触发消息
+quote: false
+
+# 渲染缩放：1 = 760px 宽；1.5 更清晰，图片体积稍大
+scale: 1.5
+
+# 时区（决定日期、作息统计）
+timezone: Asia/Shanghai
+
+# 行为分析取样：拉取本群最近多少条消息
+sampleSize: 150
+
+record:
+  # 本地为每位成员保留最近多少条发言记录（作息 / 构成统计用）
+  userMax: 300
+  # 本地为每个群保留最近多少条消息（接口拉历史失败时兜底）
+  groupMax: 300
+  # 记录保留天数（按最后一次写入顺延）
+  keepDays: 30
+
+avatar:
+  # 追踪头像变更（比对头像指纹；成员发言时按间隔检测）
+  enable: true
+  intervalHours: 6
+
+ai:
+  # 开启后需填写 apiKey；未填或调用失败时自动使用内置模板文案
+  enable: true
+  # OpenAI 兼容接口，需包含 /v1（DeepSeek / 通义 / Kimi / OpenAI / 中转站 均可）
+  baseURL: https://api.deepseek.com/v1
+  apiKey: ""
+  # 填模型 id（非显示名），DeepSeek 可选 deepseek-flash / deepseek-v4-pro
+  model: deepseek-flash
+  temperature: 0.9
+  # 请求超时（秒）
+  timeout: 45
+  # 喂给 AI 的群聊上下文条数 / 本人发言条数
+  contextSize: 80
+  userSize: 40
+  # 同一成员 AI 稿件缓存（分钟），0 为不缓存
+  cacheMinutes: 30

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --paper: #f4ead6;
+    --paper-deep: #ebdfc6;
+    --ink: #2b1d14;
+    --ink-soft: #5b4636;
+    --muted: #8c7862;
+    --line: #3a2a1e;
+    --dash: #c8b391;
+    --red: #8b2a1e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 760px;
+    transform-origin: 0 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC", "Source Han Serif CN",
+      "Songti SC", "STSong", "SimSun", "Noto Sans CJK SC", serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #container {
+    width: 760px;
+    padding: 12px;
+    background-color: var(--paper);
+    background-image: repeating-linear-gradient(0deg, rgba(110, 80, 40, .035) 0 1px, transparent 1px 5px);
+  }
+  .frame { border: 1.5px solid var(--line); padding: 4px; }
+  .paper { border: 1px solid var(--line); padding: 16px 22px 14px; }
+
+  /* 报头 */
+  .mast-top { text-align: center; font-size: 11px; letter-spacing: 4px; color: var(--muted); }
+  .mast-title {
+    text-align: center; font-size: 52px; font-weight: 900; line-height: 1.15;
+    letter-spacing: 16px; padding-left: 16px; margin: 4px 0 2px;
+  }
+  .mast-sub {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: end;
+    font-size: 11px; color: var(--muted); letter-spacing: 2px; padding-bottom: 8px;
+  }
+  .mast-sub .special { color: var(--ink-soft); letter-spacing: 1px; font-size: 12px; }
+  .mast-sub .issue-time { text-align: right; }
+  .rule-thick { height: 3px; background: var(--ink); }
+  .headline { text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; margin: 22px 0 14px; line-height: 1.4; }
+  .rule-thin { height: 1px; background: var(--line); opacity: .6; margin-bottom: 16px; }
+
+  /* 版面 */
+  .grid { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; }
+  .col > * + * { margin-top: 12px; }
+
+  .photo { background: #fffdf8; border: 2px solid var(--ink); padding: 5px 5px 7px; box-shadow: 5px 5px 0 #cdb996; }
+  .photo img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background: #efe6d6; }
+  .photo figcaption {
+    text-align: center; font-size: 11px; color: var(--muted); letter-spacing: 2px;
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2d5bd;
+  }
+  .col .photo + * { margin-top: 18px; }
+
+  .box { border: 1px solid var(--line); padding: 11px 13px 12px; }
+  .box-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; letter-spacing: 3px; color: #6b2a1e;
+    padding-bottom: 7px; margin-bottom: 10px; border-bottom: 1px dashed var(--dash);
+  }
+  .box-title::before { content: ""; width: 4px; height: 11px; background: var(--red); }
+
+  .kv { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; padding: 5px 0; }
+  .kv span { color: var(--ink-soft); }
+  .kv b { font-weight: 700; }
+  .kv b.red { color: var(--red); }
+
+  .score-box { text-align: center; }
+  .score { font-size: 56px; font-weight: 900; line-height: 1; margin-top: 4px; }
+  .score-cap { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .rank-stamp {
+    display: inline-block; margin: 8px 0 14px; padding: 3px 14px;
+    border: 1.5px solid var(--red); color: var(--red);
+    font-size: 15px; font-weight: 700; letter-spacing: 3px;
+  }
+  .meter { height: 6px; background: #d9c8a9; }
+  .meter i { display: block; height: 100%; background: var(--ink); }
+  .meter-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  .sched { text-align: center; padding: 12px; }
+  .sched-cap { font-size: 11.5px; color: var(--muted); letter-spacing: 3px; }
+  .sched-label { font-size: 24px; font-weight: 900; margin: 6px 0 4px; letter-spacing: 2px; }
+  .sched-range { font-size: 11px; color: var(--muted); }
+
+  /* 记者手记 */
+  .note { background: var(--paper-deep); border-left: 5px solid var(--ink); padding: 12px 16px 14px; }
+  .note .box-title { border: none; padding-bottom: 0; margin-bottom: 8px; }
+  .note p { font-size: 13px; line-height: 1.95; text-align: justify; }
+  .note b { font-weight: 700; }
+
+  /* 行为分析 */
+  .cap { font-size: 11.5px; color: var(--muted); margin-bottom: 7px; }
+  .stack { display: flex; height: 15px; border: 1px solid var(--line); overflow: hidden; }
+  .stack i {
+    display: flex; align-items: center; justify-content: center;
+    font-style: normal; font-size: 9.5px; white-space: nowrap; overflow: hidden;
+  }
+  .stack.empty { justify-content: center; align-items: center; font-size: 10px; color: var(--muted); background: #efe4cf; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--ink-soft); margin-top: 7px; }
+  .legend em { display: inline-block; width: 8px; height: 8px; margin-right: 4px; vertical-align: 0; }
+  .counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+  .counters div { border: 1px dashed #b8a281; text-align: center; padding: 9px 0 7px; }
+  .counters b { display: block; font-size: 24px; line-height: 1.15; }
+  .counters span { font-size: 10.5px; color: var(--muted); }
+  .chart { background: var(--paper-deep); border: 1px solid #d6c3a2; padding: 12px 10px 5px; }
+  .bars { height: 58px; display: flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid #b9a27f; }
+  .bars i { flex: 1; min-height: 2px; background: #7a5c42; }
+  .bars i.zero { background: #cdbb9b; }
+  .bars i.peak { background: var(--red); }
+  .axis { display: flex; gap: 3px; margin-top: 3px; }
+  .axis span { flex: 1; font-size: 9px; color: var(--muted); white-space: nowrap; overflow: visible; }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge { border: 1px solid var(--line); background: #faf4e8; padding: 5px 10px; font-size: 12px; font-weight: 700; }
+  .txt { font-size: 12.5px; line-height: 1.85; }
+  .muted { font-size: 12px; color: var(--muted); }
+  .names { list-style: none; }
+  .names li { display: flex; justify-content: space-between; font-size: 12.5px; padding: 3px 0; }
+  .names li span { color: var(--muted); font-size: 11.5px; }
+
+  /* 报尾 */
+  .foot {
+    margin-top: 18px; padding-top: 12px; border-top: 4px double var(--ink);
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    font-size: 11px; color: var(--muted); letter-spacing: 1px;
+  }
+  .foot > span:last-child { text-align: right; }
+  .stamp { border: 1.5px solid var(--red); color: var(--red); padding: 3px 12px; font-size: 12px; font-weight: 700; letter-spacing: 3px; }
+</style>
+</head>
+<body style="transform: scale({{scale}})">
+<div id="container">
+<div class="frame"><div class="paper">
+
+  <header>
+    <div class="mast-top">第 {{issue}} 期 &nbsp;·&nbsp; {{dateCN}} &nbsp;·&nbsp; 内部存档</div>
+    <h1 class="mast-title">群聊日报</h1>
+    <div class="mast-sub">
+      <span>CHAT GAZETTE</span>
+      <span class="special">◆ 独家人物档案特刊 ◆</span>
+      <span class="issue-time">发行时间 {{time}}</span>
+    </div>
+  </header>
+  <div class="rule-thick"></div>
+  <h2 class="headline">「{{name}}：{{headline}}」</h2>
+  <div class="rule-thin"></div>
+
+  <main class="grid">
+    <aside class="col">
+      <figure class="photo">
+        <img src="{{avatar}}">
+        <figcaption>| 本人近照存档 |</figcaption>
+      </figure>
+
+      <section class="box">
+        <div class="box-title">基础档案</div>
+        <div class="kv"><span>身份</span><b>{{role}}</b></div>
+        <div class="kv"><span>等级</span><b>{{level}}</b></div>
+        <div class="kv"><span>档案号</span><b>{{uid}}</b></div>
+        <div class="kv"><span>入群</span><b>{{joinDate}}</b></div>
+        <div class="kv"><span>群龄</span><b class="red">{{ageText}}</b></div>
+        <div class="kv"><span>最后活跃</span><b>{{lastActive}}</b></div>
+      </section>
+
+      <section class="box score-box">
+        <div class="box-title">活跃评级</div>
+        <div class="score">{{score}}</div>
+        <div class="score-cap">综合活跃积分</div>
+        <div class="rank-stamp">{{rank}}</div>
+        <div class="meter"><i style="width: {{score}}%"></i></div>
+        <div class="meter-axis"><span>0</span><span>50</span><span>100</span></div>
+      </section>
+
+      <section class="box sched">
+        <div class="sched-cap">作息特征</div>
+        <div class="sched-label">【{{schedule.label}}】</div>
+        <div class="sched-range">{{schedule.range}}</div>
+      </section>
+    </aside>
+
+    <div class="col">
+      <section class="note">
+        <div class="box-title">记者手记</div>
+        <p>{{@noteHtml}}</p>
+      </section>
+
+      <section class="box">
+        <div class="box-title">行为习惯深度分析</div>
+        <div class="cap">发言内容构成（群聊样本 {{sampleSize}} 条 · 本人记录 {{mine}} 条）</div>
+        {{if comp.length}}
+        <div class="stack">{{each comp s}}<i style="width: {{s.pct}}%; background: {{s.color}}; color: {{s.fg}}">{{if s.pct >= 9}}{{s.pct}}%{{/if}}</i>{{/each}}</div>
+        <div class="legend">{{each comp s}}<span><em style="background: {{s.color}}"></em>{{s.name}} {{s.pct}}%</span>{{/each}}</div>
+        {{else}}
+        <div class="stack empty">暂无发言样本</div>
+        {{/if}}
+        <div class="counters">
+          <div><b>{{reply}}</b><span>回复次数</span></div>
+          <div><b>{{at}}</b><span>@他人次数</span></div>
+          <div><b>{{voice}}</b><span>语音条数</span></div>
+        </div>
+        <div class="cap">24小时发言分布 · 峰值时段 {{peakRange}}</div>
+        <div class="chart">
+          <div class="bars">{{each hours h}}<i class="{{h.cls}}" style="height: {{h.pct}}%"></i>{{/each}}</div>
+          <div class="axis">{{each hours h}}<span>{{h.label}}</span>{{/each}}</div>
+        </div>
+      </section>
+
+      <section class="box">
+        <div class="box-title">荣誉存档</div>
+        {{if honors.length}}
+        <div class="badges">{{each honors h}}<span class="badge">◆ {{h}}</span>{{/each}}</div>
+        {{else}}
+        <p class="muted">暂无荣誉记录，未来可期</p>
+        {{/if}}
+      </section>
+
+      <section class="box">
+        <div class="box-title">形象变更记录</div>
+        <p class="txt">{{@avatarHtml}}</p>
+      </section>
+
+      <section class="box">
+        <div class="box-title">曾用名变更记录</div>
+        {{if names.length}}
+        <ul class="names">{{each names n}}<li><b>「{{n.name}}」</b><span>{{n.time}} 停用</span></li>{{/each}}</ul>
+        {{if namesMore}}<p class="muted">另有 {{namesMore}} 条更早记录</p>{{/if}}
+        {{else}}
+        <p class="muted">暂无曾用名变更记录</p>
+        {{/if}}
+      </section>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>群聊日报 · 内部存档 · 禁止外传</span>
+    <span class="stamp">机密文件</span>
+    <span>存档编号 NO.{{issue}} · {{dateCN}}</span>
+  </footer>
+
+</div></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "kaihe-plugin",
+  "version": "1.0.0",
+  "description": "TRSS-Yunzai 娱乐向「开盒」插件：报纸风格的群成员人物档案",
+  "author": "Tomato-0914",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tomato-0914/Kaihe-Plugin.git"
+  }
+}
