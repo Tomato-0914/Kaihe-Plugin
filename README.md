@@ -65,7 +65,7 @@ AI 使用任意 OpenAI 兼容接口，填好 `ai.apiKey` 即可；不填则用�
 ## 数据从哪来
 
 - **基础档案**：`get_group_member_info`（身份、等级、入群时间、最后发言）
-- **行为分析 / AI 上下文**：`get_group_msg_history` 向前翻页拉取群聊历史，直到取到该成员最近 `userSample` 条消息（默认 100，最多翻 `maxPages` 页），并与插件本地记录合并；群聊占比按最近 `sampleSize` 条群消息计算
+- **行为分析 / AI 上下文**：`get_group_msg_history` 向前翻页拉取群聊历史，直到取到该成员最近 `userSample` 条消息（默认 100，最多翻 `maxPages` 页），并与插件本地记录合并；群聊占比按最近 `sampleSize` 条群消息计算。翻到的记录按群缓存在内存中（最多 `maxPages × 100` 条），同群再次开盒只补拉最新消息，通常 1 次请求；重启后缓存清空
 - **作息、曾用名、头像变更**：插件加载后被动记录，存于 Redis（`kaihe:*`），**装得越久越准**
 - 头像变更通过比对头像指纹判断，成员发言时按 `avatar.intervalHours` 间隔检测
 

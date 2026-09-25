@@ -1,7 +1,6 @@
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { ROOT, getConfig } from './config.js'
-import { fromOB } from './message.js'
 import { getMember, getHistory, getAvatar } from './collector.js'
 import { getUserLog, getGroupLog, getNameHistory, getNameSince, trackName, checkAvatar } from './recorder.js'
 import { writeStory } from './ai.js'
@@ -93,7 +92,7 @@ export async function buildGazette (e, uid) {
 
   /* ---------- 样本 ---------- */
   // 群聊样本：最近 groupSize 条真人消息（群聊占比、AI 上下文）
-  const human = history.map(m => fromOB(m, e.self_id)).filter(m => m.u && m.u != e.self_id)
+  const human = history.filter(m => m.u && m.u != e.self_id)
   let sample = human.slice(-groupSize)
   if (sample.length < 10) {
     const local = await getGroupLog(g, groupSize)

@@ -1,3 +1,5 @@
+import { fromOB } from './message.js'
+
 /** 兼容 TRSS 返回的 Proxy 与原始 {data} 结构 */
 const unwrap = (r, field) => r?.[field] !== undefined ? r : r?.data
 
@@ -29,16 +31,46 @@ const ANCHORS = ['message_id', 'message_seq', 'real_id']
 let anchorField = null
 
 /**
- * 向前翻页拉取群聊历史（get_group_msg_history，每页 100 条）
- * 群聊真人消息 ≥ groupCount 且目标成员消息 ≥ userCount 时停止；最多 maxPages 页；没有更早的消息时停止
+ * 群聊历史缓存（内存）：每群保存已翻到的消息（解析后的精简记录 + 翻页锚点），
+ * 再次开盒时只补拉最新消息，不够才从缓存最早一条继续往前翻。重启后清空。
+ * { list: 记录（按时间升序）, ids: Set, complete: 已翻到群聊最早的消息, used, lock }
  */
-export async function getHistory (e, { groupCount = 150, uid, userCount = 0, maxPages = 30 } = {}) {
+const CACHE = new Map()
+const CACHE_GROUPS = 30
+
+function cacheOf (key) {
+  let c = CACHE.get(key)
+  if (!c) {
+    c = { list: [], ids: new Set(), complete: false, lock: Promise.resolve() }
+    CACHE.set(key, c)
+    if (CACHE.size > CACHE_GROUPS) {
+      const lru = [...CACHE.entries()].filter(([k]) => k !== key).sort((a, b) => a[1].used - b[1].used)[0]
+      if (lru) CACHE.delete(lru[0])
+    }
+  }
+  c.used = Date.now()
+  return c
+}
+
+/**
+ * 获取群聊历史（get_group_msg_history，每页 100 条），返回解析后的记录（按时间升序）
+ * 1. 从最新一页往回补拉，直到与缓存衔接（通常 1 页）；翻满 maxPages 仍衔接不上则丢弃旧缓存
+ * 2. 缓存中群聊真人消息 < groupCount 或目标成员消息 < userCount 时，从缓存最早一条继续往前翻
+ * 缓存深度上限 maxPages × 100 条（超出丢弃最旧的），因此很少发言的成员重复开盒也不会每次都翻满
+ */
+export function getHistory (e, opts = {}) {
+  const c = cacheOf(`${e.self_id}:${e.group_id}`)
+  // 同群并发开盒时排队，避免重复翻页
+  const run = c.lock.then(() => fillHistory(e, c, opts))
+  c.lock = run.catch(() => {})
+  return run
+}
+
+async function fillHistory (e, c, { groupCount = 150, uid, userCount = 0, maxPages = 30 } = {}) {
   const bot = botOf(e)
-  const all = new Map()
-  let human = 0
-  let mine = 0
+  const depth = Math.max(1, maxPages) * 100
+  let reused = 0 // 本次复用的缓存条数（断档时为 0）
   let pages = 0
-  let oldest = null
 
   const fetchPage = async seq => {
     pages++
@@ -46,47 +78,83 @@ export async function getHistory (e, { groupCount = 150, uid, userCount = 0, max
     const msgs = unwrap(r, 'messages')?.messages
     return Array.isArray(msgs) ? msgs : []
   }
-  /** 收录一页，返回新增条数 */
-  const absorb = msgs => {
-    let added = 0
-    for (const m of msgs) {
-      const id = String(m.message_id ?? m.message_seq)
-      if (all.has(id)) continue
-      all.set(id, m)
-      added++
-      const u = String(m.user_id ?? m.sender?.user_id)
-      if (u !== String(e.self_id)) human++
-      if (uid && u === String(uid)) mine++
-      if (!oldest || Number(m.time) < Number(oldest.time)) oldest = m
+  const toRecord = m => ({ ...fromOB(m, e.self_id), a: { message_id: m.message_id, message_seq: m.message_seq, real_id: m.real_id } })
+  /** 以 rec 为锚点取更早的一页：依次尝试各锚点字段，返回原始消息（无更早消息时为空） */
+  const fetchOlder = async (rec, isKnown) => {
+    const fields = anchorField ? [anchorField, ...ANCHORS.filter(f => f !== anchorField)] : ANCHORS
+    const tried = new Set()
+    for (const f of fields) {
+      const seq = rec.a?.[f]
+      if (seq == null || seq === '' || tried.has(String(seq))) continue
+      tried.add(String(seq))
+      const msgs = await fetchPage(seq)
+      if (msgs.some(m => !isKnown(toRecord(m).id))) {
+        if (anchorField !== f) logger.debug(`[群友开盒] 翻页锚点使用 ${f}`)
+        anchorField = f
+        return msgs
+      }
+      if (pages >= maxPages) break
     }
-    return added
+    return []
   }
 
   try {
-    absorb(await fetchPage(undefined))
-    while (oldest && pages < maxPages && (human < groupCount || mine < userCount)) {
-      const fields = anchorField ? [anchorField, ...ANCHORS.filter(f => f !== anchorField)] : ANCHORS
-      const tried = new Set()
+    /* ---------- 1. 补拉最新消息，与缓存衔接 ---------- */
+    const fresh = new Map()
+    let joined = !c.list.length
+    const addFresh = msgs => {
       let added = 0
-      for (const f of fields) {
-        const seq = oldest[f]
-        if (seq == null || seq === '' || tried.has(String(seq))) continue
-        tried.add(String(seq))
-        added = absorb(await fetchPage(seq))
-        if (added) {
-          if (anchorField !== f) logger.debug(`[群友开盒] 翻页锚点使用 ${f}`)
-          anchorField = f
-          break
-        }
-        if (pages >= maxPages) break
+      for (const m of msgs) {
+        const r = toRecord(m)
+        if (c.ids.has(r.id)) joined = true
+        else if (!fresh.has(r.id)) { fresh.set(r.id, r); added++ }
       }
-      if (!added) break // 没有更早的消息，或协议端不支持翻页
+      return added
+    }
+    addFresh(await fetchPage(undefined))
+    while (!joined && fresh.size && pages < maxPages) {
+      const oldest = [...fresh.values()].reduce((a, b) => (b.t < a.t ? b : a))
+      if (!addFresh(await fetchOlder(oldest, id => fresh.has(id) || c.ids.has(id)))) break
+    }
+    if (!joined) { // 与旧缓存之间断档：旧缓存作废，以本次拉到的为准
+      c.list = []
+      c.ids.clear()
+      c.complete = false
+    }
+    reused = c.list.length
+    for (const r of fresh.values()) { c.list.push(r); c.ids.add(r.id) }
+    c.list.sort((a, b) => a.t - b.t)
+
+    /* ---------- 2. 缓存不够时继续往前翻 ---------- */
+    const isHuman = r => r.u && r.u != e.self_id
+    let human = c.list.filter(isHuman).length
+    let mine = uid ? c.list.filter(r => r.u == uid).length : 0
+    while (!c.complete && c.list.length && c.list.length < depth && pages < maxPages && (human < groupCount || mine < userCount)) {
+      const older = (await fetchOlder(c.list[0], id => c.ids.has(id))).map(toRecord).filter(r => !c.ids.has(r.id))
+      if (!older.length) { c.complete = true; break } // 已到群聊最早的消息，或协议端不支持翻页
+      for (const r of older) {
+        c.ids.add(r.id)
+        if (isHuman(r)) human++
+        if (uid && r.u == uid) mine++
+      }
+      c.list.unshift(...older.sort((a, b) => a.t - b.t))
+    }
+
+    /* ---------- 3. 截断到深度上限（保留最新） ---------- */
+    if (c.list.length > depth) {
+      for (const r of c.list.splice(0, c.list.length - depth)) c.ids.delete(r.id)
+      c.complete = false
+      reused = Math.min(reused, c.list.length)
     }
   } catch (err) {
     logger.warn(`[群友开盒] get_group_msg_history 失败：${err.message}`)
   }
-  logger.info(`[群友开盒] 拉取历史 ${pages} 页，共 ${all.size} 条，真人消息 ${human} 条${uid ? `，目标成员 ${mine} 条` : ''}`)
-  return [...all.values()].sort((a, b) => a.time - b.time)
+
+  const human = c.list.filter(r => r.u && r.u != e.self_id).length
+  const mine = uid ? c.list.filter(r => r.u == uid).length : 0
+  logger.info(`[群友开盒] 拉取历史 ${pages} 页（复用缓存 ${reused} 条），共 ${c.list.length} 条，` +
+    `真人消息 ${human} 条${uid ? `，目标成员 ${mine} 条` : ''}${c.complete ? '，已到群聊最早记录' : ''}`)
+  return c.list.slice()
 }
 
 /**

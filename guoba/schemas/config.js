@@ -43,7 +43,7 @@ export default [
   { field: 'timezone', label: '时区', bottomHelpMessage: '决定日期与作息统计，如 Asia/Shanghai', component: 'Input' },
   num('sampleSize', '群聊取样', '本群最近多少条消息，用于群聊占比与 AI 上下文', { min: 10, max: 1000, addonAfter: '条' }),
   num('userSample', '本人取样', '向前翻页直到取到该成员最近多少条消息，用于发言构成与作息', { min: 10, max: 1000, addonAfter: '条' }),
-  num('maxPages', '翻页上限', '每页 100 条；成员很少发言时最多翻这么多页', { min: 1, max: 200, addonAfter: '页' }),
+  num('maxPages', '回溯深度', '每页 100 条，最多往前翻这么多页；翻到的记录按群缓存复用，同群再次开盒通常只补拉 1 页', { min: 1, max: 200, addonAfter: '页' }),
 
   group('本地记录'),
   num('record.userMax', '每人保留发言', '作息 / 构成统计用', { min: 10, addonAfter: '条' }),
