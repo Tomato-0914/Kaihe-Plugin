@@ -2,7 +2,15 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<style>
+{{each fontPreload f}}<link rel="preload" href="{{fontDir}}/{{f}}" as="font" crossorigin>
+{{/each}}<style>
+  /* 插件自带字体（resources/fonts），系统字体仅作兜底 */
+  @font-face { font-family: "KH Serif"; src: url("{{fontDir}}/NotoSerifSC-VF.ttf") format("truetype"); font-weight: 200 900; }
+  @font-face { font-family: "KH Sans"; src: url("{{fontDir}}/NotoSansSC-VF.ttf") format("truetype"); font-weight: 100 900; }
+  @font-face { font-family: "KH Kai"; src: url("{{fontDir}}/LXGWWenKaiLite-Medium.ttf") format("truetype"); font-weight: 100 900; }
+  @font-face { font-family: "KH Mono"; src: url("{{fontDir}}/JetBrainsMono-400.woff2") format("woff2"); font-weight: 100 500; }
+  @font-face { font-family: "KH Mono"; src: url("{{fontDir}}/JetBrainsMono-700.woff2") format("woff2"); font-weight: 600 900; }
+
   :root {
     --paper: #f4ead6;
     --paper-deep: #ebdfc6;
@@ -12,6 +20,26 @@
     --line: #3a2a1e;
     --dash: #c8b391;
     --red: #8b2a1e;
+    --accent-title: #6b2a1e;
+    --texture: rgba(110, 80, 40, .035);
+    --shadow: #cdb996;
+    --photo-bg: #fffdf8;
+    --photo-img-bg: #efe6d6;
+    --photo-rule: #e2d5bd;
+    --meter-bg: #d9c8a9;
+    --empty-bg: #efe4cf;
+    --counter-border: #b8a281;
+    --chart-border: #d6c3a2;
+    --chart-axis: #b9a27f;
+    --bar: #7a5c42;
+    --bar-zero: #cdbb9b;
+    --badge-bg: #faf4e8;
+    /* 发言构成：底色 / 文字色 */
+    --c-text: #2b1d14; --c-text-fg: #f3e8d2;
+    --c-image: #5e4230; --c-image-fg: #f3e8d2;
+    --c-face: #a88560; --c-face-fg: #2b1d14;
+    --c-record: #8b2a1e; --c-record-fg: #f3e8d2;
+    --c-other: #cbb591; --c-other-fg: #2b1d14;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -19,7 +47,7 @@
     transform-origin: 0 0;
     background: var(--paper);
     color: var(--ink);
-    font-family: "Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC", "Source Han Serif CN",
+    font-family: "KH Serif", "Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC", "Source Han Serif CN",
       "Songti SC", "STSong", "SimSun", "Noto Sans CJK SC", serif;
     -webkit-font-smoothing: antialiased;
   }
@@ -27,7 +55,7 @@
     width: 760px;
     padding: 12px;
     background-color: var(--paper);
-    background-image: repeating-linear-gradient(0deg, rgba(110, 80, 40, .035) 0 1px, transparent 1px 5px);
+    background-image: repeating-linear-gradient(0deg, var(--texture) 0 1px, transparent 1px 5px);
   }
   .frame { border: 1.5px solid var(--line); padding: 4px; }
   .paper { border: 1px solid var(--line); padding: 16px 22px 14px; }
@@ -52,18 +80,18 @@
   .grid { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; }
   .col > * + * { margin-top: 12px; }
 
-  .photo { background: #fffdf8; border: 2px solid var(--ink); padding: 5px 5px 7px; box-shadow: 5px 5px 0 #cdb996; }
-  .photo img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background: #efe6d6; }
+  .photo { background: var(--photo-bg); border: 2px solid var(--ink); padding: 5px 5px 7px; box-shadow: 5px 5px 0 var(--shadow); }
+  .photo img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background: var(--photo-img-bg); }
   .photo figcaption {
     text-align: center; font-size: 11px; color: var(--muted); letter-spacing: 2px;
-    margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2d5bd;
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--photo-rule);
   }
   .col .photo + * { margin-top: 18px; }
 
   .box { border: 1px solid var(--line); padding: 11px 13px 12px; }
   .box-title {
     display: flex; align-items: center; gap: 8px;
-    font-size: 11.5px; letter-spacing: 3px; color: #6b2a1e;
+    font-size: 11.5px; letter-spacing: 3px; color: var(--accent-title);
     padding-bottom: 7px; margin-bottom: 10px; border-bottom: 1px dashed var(--dash);
   }
   .box-title::before { content: ""; width: 4px; height: 11px; background: var(--red); }
@@ -81,7 +109,7 @@
     border: 1.5px solid var(--red); color: var(--red);
     font-size: 15px; font-weight: 700; letter-spacing: 3px;
   }
-  .meter { height: 6px; background: #d9c8a9; }
+  .meter { height: 6px; background: var(--meter-bg); }
   .meter i { display: block; height: 100%; background: var(--ink); }
   .meter-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 4px; }
 
@@ -103,23 +131,28 @@
     display: flex; align-items: center; justify-content: center;
     font-style: normal; font-size: 9.5px; white-space: nowrap; overflow: hidden;
   }
-  .stack.empty { justify-content: center; align-items: center; font-size: 10px; color: var(--muted); background: #efe4cf; }
+  .stack.empty { justify-content: center; align-items: center; font-size: 10px; color: var(--muted); background: var(--empty-bg); }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--ink-soft); margin-top: 7px; }
+  .cat-text { background: var(--c-text); color: var(--c-text-fg); }
+  .cat-image { background: var(--c-image); color: var(--c-image-fg); }
+  .cat-face { background: var(--c-face); color: var(--c-face-fg); }
+  .cat-record { background: var(--c-record); color: var(--c-record-fg); }
+  .cat-other { background: var(--c-other); color: var(--c-other-fg); }
   .legend em { display: inline-block; width: 8px; height: 8px; margin-right: 4px; vertical-align: 0; }
   .counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
-  .counters div { border: 1px dashed #b8a281; text-align: center; padding: 9px 0 7px; }
+  .counters div { border: 1px dashed var(--counter-border); text-align: center; padding: 9px 0 7px; }
   .counters b { display: block; font-size: 24px; line-height: 1.15; }
   .counters span { font-size: 10.5px; color: var(--muted); }
-  .chart { background: var(--paper-deep); border: 1px solid #d6c3a2; padding: 12px 10px 5px; }
-  .bars { height: 58px; display: flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid #b9a27f; }
-  .bars i { flex: 1; min-height: 2px; background: #7a5c42; }
-  .bars i.zero { background: #cdbb9b; }
+  .chart { background: var(--paper-deep); border: 1px solid var(--chart-border); padding: 12px 10px 5px; }
+  .bars { height: 58px; display: flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid var(--chart-axis); }
+  .bars i { flex: 1; min-height: 2px; background: var(--bar); }
+  .bars i.zero { background: var(--bar-zero); }
   .bars i.peak { background: var(--red); }
   .axis { display: flex; gap: 3px; margin-top: 3px; }
   .axis span { flex: 1; font-size: 9px; color: var(--muted); white-space: nowrap; overflow: visible; }
 
   .badges { display: flex; flex-wrap: wrap; gap: 8px; }
-  .badge { border: 1px solid var(--line); background: #faf4e8; padding: 5px 10px; font-size: 12px; font-weight: 700; }
+  .badge { border: 1px solid var(--line); background: var(--badge-bg); padding: 5px 10px; font-size: 12px; font-weight: 700; }
   .txt { font-size: 12.5px; line-height: 1.85; }
   .muted { font-size: 12px; color: var(--muted); }
   .names { list-style: none; }
@@ -137,6 +170,7 @@
   .foot > span:last-child { text-align: right; }
   .stamp { border: 1.5px solid var(--red); color: var(--red); padding: 3px 12px; font-size: 12px; font-weight: 700; letter-spacing: 3px; }
 </style>
+<style>{{@themeCss}}</style>
 </head>
 <body style="transform: scale({{scale}})">
 <div id="container">
@@ -144,9 +178,9 @@
 
   <header>
     <div class="mast-top">第 {{issue}} 期 &nbsp;·&nbsp; {{dateCN}} &nbsp;·&nbsp; 内部存档</div>
-    <h1 class="mast-title">群聊日报</h1>
+    <h1 class="mast-title">个人档案</h1>
     <div class="mast-sub">
-      <span>CHAT GAZETTE</span>
+      <span>PERSONAL ARCHIVE</span>
       <span class="special">◆ 独家人物档案特刊 ◆</span>
       <span class="issue-time">发行时间 {{time}}</span>
     </div>
@@ -198,8 +232,8 @@
         <div class="box-title">行为习惯深度分析</div>
         <div class="cap">发言内容构成（群聊样本 {{sampleSize}} 条 · 本人记录 {{mine}} 条）</div>
         {{if comp.length}}
-        <div class="stack">{{each comp s}}<i style="width: {{s.pct}}%; background: {{s.color}}; color: {{s.fg}}">{{if s.pct >= 9}}{{s.pct}}%{{/if}}</i>{{/each}}</div>
-        <div class="legend">{{each comp s}}<span><em style="background: {{s.color}}"></em>{{s.name}} {{s.pct}}%</span>{{/each}}</div>
+        <div class="stack">{{each comp s}}<i class="cat-{{s.key}}" style="width: {{s.pct}}%">{{if s.pct >= 9}}{{s.pct}}%{{/if}}</i>{{/each}}</div>
+        <div class="legend">{{each comp s}}<span><em class="cat-{{s.key}}"></em>{{s.name}} {{s.pct}}%</span>{{/each}}</div>
         {{else}}
         <div class="stack empty">暂无发言样本</div>
         {{/if}}
@@ -243,7 +277,7 @@
   </main>
 
   <footer class="foot">
-    <span>群聊日报 · 内部存档 · 禁止外传</span>
+    <span>个人档案 · 内部存档 · 禁止外传</span>
     <span class="stamp">机密文件</span>
     <span>存档编号 NO.{{issue}} · {{dateCN}}</span>
   </footer>

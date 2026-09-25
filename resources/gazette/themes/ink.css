@@ -1,0 +1,48 @@
+/* 水墨宣纸 */
+:root {
+  --paper: #f3eee2;
+  --paper-deep: #ebe4d3;
+  --ink: #1b1b1b;
+  --ink-soft: #3d3a35;
+  --muted: #847d70;
+  --line: #2a2a2a;
+  --dash: #c8bfae;
+  --red: #b8321f;
+  --accent-title: #b8321f;
+  --texture: rgba(60, 50, 30, .025);
+  --shadow: #d5ccb9;
+  --photo-bg: #faf7ef;
+  --photo-img-bg: #e7e0cf;
+  --photo-rule: #ddd4c1;
+  --meter-bg: #ddd5c4;
+  --empty-bg: #e9e2d2;
+  --counter-border: #b9b09d;
+  --chart-border: #d9d0bd;
+  --chart-axis: #a59c89;
+  --bar: #4a4845;
+  --bar-zero: #d9d1c0;
+  --badge-bg: #faf7ef;
+  --c-text: #1b1b1b; --c-text-fg: #f3eee2;
+  --c-image: #55524d; --c-image-fg: #f3eee2;
+  --c-face: #9a948a; --c-face-fg: #1b1b1b;
+  --c-record: #b8321f; --c-record-fg: #f3eee2;
+  --c-other: #cfc7b6; --c-other-fg: #1b1b1b;
+}
+
+/* 标题用楷体 / 书法感字体（服务器无此字体时回退为衬线体） */
+.mast-title, .headline, .sched-label, .rank-stamp, .stamp {
+  font-family: "KH Kai", "LXGW WenKai", "KaiTi", "STKaiti", "AR PL UKai CN", "Noto Serif CJK SC", serif;
+}
+.mast-title { font-size: 58px; }
+/* 宣纸晕染 */
+#container {
+  background-image:
+    radial-gradient(ellipse at 15% 10%, rgba(0, 0, 0, .05), transparent 45%),
+    radial-gradient(ellipse at 90% 85%, rgba(0, 0, 0, .04), transparent 40%),
+    repeating-linear-gradient(90deg, var(--texture) 0 1px, transparent 1px 6px);
+}
+.box { border-color: #3a3a3a; }
+.rule-thick { height: 4px; background: linear-gradient(90deg, transparent, var(--ink) 8%, var(--ink) 92%, transparent); }
+/* 朱砂印章 */
+.rank-stamp, .stamp { background: var(--red); color: #f8efe0; border-color: var(--red); border-radius: 3px; }
+.bars i.peak { background: var(--red); }

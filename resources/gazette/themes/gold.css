@@ -1,0 +1,43 @@
+/* 黑底金字 */
+:root {
+  --paper: #14120e;
+  --paper-deep: #1d1a14;
+  --ink: #e2c27a;
+  --ink-soft: #cdb78c;
+  --muted: #8f7c57;
+  --line: #a8843f;
+  --dash: #4a3d26;
+  --red: #e0b458;
+  --accent-title: #d6aa52;
+  --texture: rgba(226, 190, 112, .022);
+  --shadow: #3b301c;
+  --photo-bg: #0d0b08;
+  --photo-img-bg: #2a241a;
+  --photo-rule: #3a3020;
+  --meter-bg: #372e20;
+  --empty-bg: #211d16;
+  --counter-border: #62522f;
+  --chart-border: #3a3021;
+  --chart-axis: #62522f;
+  --bar: #7c6236;
+  --bar-zero: #342c1f;
+  --badge-bg: #1c1812;
+  --c-text: #d9b563; --c-text-fg: #14120e;
+  --c-image: #9c7a3a; --c-image-fg: #14120e;
+  --c-face: #5f4a29; --c-face-fg: #f0dca8;
+  --c-record: #f2dfa6; --c-record-fg: #14120e;
+  --c-other: #3d3222; --c-other-fg: #e2c27a;
+}
+
+/* 正文用香槟色，比纯金更易读；标题与大数字用金色渐变 */
+.note p, .txt, .kv b, .names li b, .badge { color: #eadcb8; }
+.mast-title, .score, .sched-label, .headline {
+  background: linear-gradient(180deg, #f8e6a8 0%, #d8ac52 55%, #9c7430 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.rule-thick { background: linear-gradient(90deg, #6e5328, #e6c070 50%, #6e5328); }
+.frame, .paper { border-color: #a8843f; }
+.photo { border-color: #c9a04e; }
+.foot { border-top-color: #c9a04e; }

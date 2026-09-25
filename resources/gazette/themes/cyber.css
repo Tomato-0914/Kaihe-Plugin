@@ -1,0 +1,45 @@
+/* 赛博终端 */
+:root {
+  --paper: #050805;
+  --paper-deep: #0a120b;
+  --ink: #43ff8e;
+  --ink-soft: #7de8a8;
+  --muted: #3b9e63;
+  --line: #1f8f4e;
+  --dash: #164f2e;
+  --red: #ff3b6b;
+  --accent-title: #43ff8e;
+  --texture: rgba(67, 255, 142, .045);
+  --shadow: #0f3b22;
+  --photo-bg: #050805;
+  --photo-img-bg: #0c1f12;
+  --photo-rule: #164f2e;
+  --meter-bg: #0f2a18;
+  --empty-bg: #0a1a0f;
+  --counter-border: #1f6b3d;
+  --chart-border: #164f2e;
+  --chart-axis: #1f6b3d;
+  --bar: #2bbd68;
+  --bar-zero: #0f2a18;
+  --badge-bg: #07100a;
+  --c-text: #43ff8e; --c-text-fg: #050805;
+  --c-image: #1fb86a; --c-image-fg: #050805;
+  --c-face: #0f7a44; --c-face-fg: #c8ffe0;
+  --c-record: #ff3b6b; --c-record-fg: #050805;
+  --c-other: #0c3d22; --c-other-fg: #7de8a8;
+}
+
+body {
+  font-family: "KH Mono", "KH Sans", "Noto Sans Mono CJK SC", "JetBrains Mono", "Consolas", monospace;
+}
+/* CRT 扫描线 */
+#container { background-image: repeating-linear-gradient(0deg, var(--texture) 0 1px, transparent 1px 3px); }
+.mast-title, .headline, .score, .sched-label { text-shadow: 0 0 6px rgba(67, 255, 142, .55), 0 0 18px rgba(67, 255, 142, .25); }
+.headline::after { content: "_"; opacity: .8; margin-left: 2px; }
+.mast-top::before { content: "[ ACCESS GRANTED ] "; color: var(--red); letter-spacing: 2px; }
+.box-title::before { width: auto; height: auto; background: none; content: "$"; color: var(--muted); }
+.rank-stamp, .stamp { color: var(--red); border-color: var(--red); text-shadow: 0 0 6px rgba(255, 59, 107, .5); }
+.note { border-left-color: var(--ink); }
+.bars i.peak { background: var(--red); box-shadow: 0 0 8px rgba(255, 59, 107, .6); }
+.photo { border-color: var(--line); }
+.photo img { filter: grayscale(.35) sepia(.3) hue-rotate(70deg) saturate(1.6) contrast(1.05); }

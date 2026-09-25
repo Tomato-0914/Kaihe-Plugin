@@ -1,0 +1,51 @@
+/* 粉色手帐 */
+:root {
+  --paper: #fdf1f4;
+  --paper-deep: #fbe3ea;
+  --ink: #6e2a40;
+  --ink-soft: #8c4a5f;
+  --muted: #c08597;
+  --line: #e7a3b8;
+  --dash: #f2c3d1;
+  --red: #e2557d;
+  --accent-title: #d9456f;
+  --texture: rgba(226, 85, 125, .03);
+  --shadow: #f5c6d4;
+  --photo-bg: #ffffff;
+  --photo-img-bg: #fbe3ea;
+  --photo-rule: #f6d3de;
+  --meter-bg: #f6d3de;
+  --empty-bg: #fbe3ea;
+  --counter-border: #efb0c3;
+  --chart-border: #f6d3de;
+  --chart-axis: #e7a3b8;
+  --bar: #f08fab;
+  --bar-zero: #f8dbe4;
+  --badge-bg: #ffffff;
+  --c-text: #e2557d; --c-text-fg: #ffffff;
+  --c-image: #f39cb5; --c-image-fg: #6e2a40;
+  --c-face: #ffc2d3; --c-face-fg: #6e2a40;
+  --c-record: #9b5de5; --c-record-fg: #ffffff;
+  --c-other: #ffe3ec; --c-other-fg: #6e2a40;
+}
+
+body { font-family: "KH Sans", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+/* 手帐点阵纸 */
+#container {
+  background-image: radial-gradient(circle, rgba(226, 85, 125, .16) 1px, transparent 1.4px);
+  background-size: 14px 14px;
+}
+.frame, .paper { border-color: var(--line); border-radius: 14px; }
+.frame { border-width: 2px; border-style: dashed; }
+.box, .note, .chart, .counters div, .stack { border-radius: 12px; }
+.box { border: 1.5px solid var(--line); background: rgba(255, 255, 255, .55); }
+.note { border-left: 6px solid var(--red); }
+.badge, .rank-stamp, .stamp { border-radius: 999px; border-color: var(--red); }
+.badge { color: var(--accent-title); }
+.photo { border: 3px solid #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(226, 85, 125, .25); transform: rotate(-2.5deg); }
+.photo img { border-radius: 6px; }
+.photo figcaption::after { content: " ♡"; color: var(--red); }
+.bars i { border-radius: 3px 3px 0 0; }
+.bars i.peak { background: var(--red); }
+.meter, .meter i { border-radius: 99px; }
+.mast-title { font-weight: 900; letter-spacing: 14px; }

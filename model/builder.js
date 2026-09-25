@@ -5,18 +5,20 @@ import { fromOB } from './message.js'
 import { getMember, getHistory, getAvatar } from './collector.js'
 import { getUserLog, getGroupLog, getNameHistory, getNameSince, trackName, checkAvatar } from './recorder.js'
 import { writeStory } from './ai.js'
+import { themeCss, themeFonts, pickTheme, FONT_DIR_URL } from './theme.js'
 import {
   K, now, pad, escapeHtml, tzParts, dayNum, hourOf, fmtDate, fmtDateCN, fmtHM, fmtShort, ago, cnNum, percents
 } from './utils.js'
 
 const TPL = path.join(ROOT, 'resources', 'gazette', 'index.html')
 
+// 发言构成类别（颜色由主题的 --c-* 变量决定）
 const CATS = [
-  { key: 'text', name: '文字', color: '#2b1d14', fg: '#f3e8d2' },
-  { key: 'image', name: '图片', color: '#5e4230', fg: '#f3e8d2' },
-  { key: 'face', name: '表情', color: '#a88560', fg: '#2b1d14' },
-  { key: 'record', name: '语音', color: '#8b2a1e', fg: '#f3e8d2' },
-  { key: 'other', name: '其他', color: '#cbb591', fg: '#2b1d14' }
+  { key: 'text', name: '文字' },
+  { key: 'image', name: '图片' },
+  { key: 'face', name: '表情' },
+  { key: 'record', name: '语音' },
+  { key: 'other', name: '其他' }
 ]
 const ROLE = { owner: '群主', admin: '管理员', member: '群成员' }
 /** 老号的头像上传时间普遍集中在 2019-04-15，疑为 CDN 迁移时间，早于此的只能说明“至少从那时起” */
@@ -264,10 +266,16 @@ export async function buildGazette (e, uid) {
   }
   for (const b of story?.badges || []) if (!honors.includes(b)) honors.push(b)
 
+  const css = themeCss(await pickTheme(c))
   return {
     tplFile: TPL,
     saveId: `${g}_${uid}`,
     scale: Number(c.scale) || 1,
+    themeCss: css,
+    fontDir: FONT_DIR_URL,
+    fontPreload: themeFonts(css),
+    // 等页面 load（含预加载字体）且网络空闲后再截图，避免字体未就绪时出现回退字体或空白
+    pageGotoParams: { waitUntil: ['load', 'networkidle0'] },
     issue,
     dateCN: fmtDateCN(T, tz),
     time: fmtHM(T, tz),

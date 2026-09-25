@@ -1,0 +1,49 @@
+/* 蓝图档案 */
+:root {
+  --paper: #123a66;
+  --paper-deep: #0f3259;
+  --ink: #eaf3ff;
+  --ink-soft: #c2d6ee;
+  --muted: #86a6cc;
+  --line: #9cc0ea;
+  --dash: #3f6a9a;
+  --red: #ffd166;
+  --accent-title: #9fd0ff;
+  --texture: rgba(255, 255, 255, 0);
+  --shadow: #0b2748;
+  --photo-bg: #0f3259;
+  --photo-img-bg: #1c4a7c;
+  --photo-rule: #3f6a9a;
+  --meter-bg: #214d80;
+  --empty-bg: #174270;
+  --counter-border: #5b87ba;
+  --chart-border: #3f6a9a;
+  --chart-axis: #7fa6d4;
+  --bar: #7fb2e8;
+  --bar-zero: #214d80;
+  --badge-bg: #0f3259;
+  --c-text: #eaf3ff; --c-text-fg: #123a66;
+  --c-image: #7fb2e8; --c-image-fg: #0b2748;
+  --c-face: #3f7cc0; --c-face-fg: #eaf3ff;
+  --c-record: #ffd166; --c-record-fg: #123a66;
+  --c-other: #2a5c93; --c-other-fg: #eaf3ff;
+}
+
+body {
+  font-family: "KH Sans", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+}
+/* 图纸网格 */
+#container {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .09) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, .04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .04) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px, 8px 8px, 8px 8px;
+}
+.mast-title { font-weight: 700; letter-spacing: 20px; }
+.box, .frame, .paper { border-style: solid; border-color: var(--line); }
+.box { border-style: dashed; }
+.note { border-left-color: var(--red); }
+.bars i.peak { background: var(--red); }
+.photo { border-color: var(--line); box-shadow: 5px 5px 0 var(--shadow); }

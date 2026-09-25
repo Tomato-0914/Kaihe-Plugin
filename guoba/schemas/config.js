@@ -1,3 +1,5 @@
+import { listThemes, THEME_MODES } from '../../model/theme.js'
+
 /** 模型候选项，由「获取可用模型」按钮原地更新；锅巴每次拉取插件列表都会读取到最新内容 */
 export const modelOptions = []
 
@@ -17,6 +19,27 @@ export default [
   num('cd', '触发冷却', '同一用户两次开盒的间隔，主人不受限制', { addonAfter: '秒' }),
   { field: 'quote', label: '引用触发消息', bottomHelpMessage: '发送图片时是否引用触发消息', component: 'Switch' },
   num('scale', '渲染缩放', '1 = 760px 宽；1.5 更清晰，图片体积稍大', { min: 0.5, max: 3, step: 0.1 }),
+  {
+    field: 'themeMode',
+    label: '主题切换',
+    bottomHelpMessage: '固定：始终使用下方的版面主题；轮换：按顺序依次使用；随机：每次随机（不连续重复）',
+    component: 'Select',
+    componentProps: { options: THEME_MODES }
+  },
+  {
+    field: 'theme',
+    label: '版面主题',
+    bottomHelpMessage: '固定模式下使用的主题；在 resources/gazette/themes/ 放入 css 文件即可新增主题',
+    component: 'Select',
+    componentProps: { options: listThemes() }
+  },
+  {
+    field: 'themePool',
+    label: '轮换 / 随机范围',
+    bottomHelpMessage: '留空表示全部主题',
+    component: 'Select',
+    componentProps: { options: listThemes(), mode: 'multiple', allowClear: true }
+  },
   { field: 'timezone', label: '时区', bottomHelpMessage: '决定日期与作息统计，如 Asia/Shanghai', component: 'Input' },
   num('sampleSize', '群聊取样', '本群最近多少条消息，用于群聊占比与 AI 上下文', { min: 10, max: 1000, addonAfter: '条' }),
   num('userSample', '本人取样', '向前翻页直到取到该成员最近多少条消息，用于发言构成与作息', { min: 10, max: 1000, addonAfter: '条' }),

@@ -13,6 +13,18 @@ quote: false
 # 渲染缩放：1 = 760px 宽；1.5 更清晰，图片体积稍大
 scale: 1.5
 
+# 版面主题：default 经典黄底黑字 / gold 黑底金字 / dossier 机密卷宗 / blueprint 蓝图档案
+#          cyber 赛博终端 / ink 水墨宣纸 / sakura 粉色手帐 / midnight 深夜模式
+# 可在 resources/gazette/themes/ 放入新的 css 文件自定义主题（文件名即主题名）
+theme: default
+
+# 主题切换方式：fixed 固定使用上面的 theme / rotate 按顺序轮换 / random 每次随机
+# 也可由主人发送 #开盒主题 查看与切换
+themeMode: fixed
+
+# 参与轮换 / 随机的主题，留空 [] 表示全部主题，例：[gold, cyber, dossier]
+themePool: []
+
 # 时区（决定日期、作息统计）
 timezone: Asia/Shanghai
 

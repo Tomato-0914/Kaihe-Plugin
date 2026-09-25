@@ -8,7 +8,9 @@ export const K = {
   avatar: u => `kaihe:avatar:${u}`,
   ai: (g, u) => `kaihe:ai:${g}:${u}`,
   cd: (g, u) => `kaihe:cd:${g}:${u}`,
-  issue: 'kaihe:issue'
+  issue: 'kaihe:issue',
+  themeRR: 'kaihe:theme:rr',
+  themeLast: 'kaihe:theme:last'
 }
 
 export const now = () => Math.floor(Date.now() / 1000)

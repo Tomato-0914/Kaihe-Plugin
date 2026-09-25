@@ -1,0 +1,39 @@
+/* 深夜模式 */
+:root {
+  --paper: #161b24;
+  --paper-deep: #1d2430;
+  --ink: #e3e9f1;
+  --ink-soft: #b3bfcf;
+  --muted: #7b889b;
+  --line: #3a4658;
+  --dash: #2c3645;
+  --red: #4cc3f0;
+  --accent-title: #4cc3f0;
+  --texture: rgba(255, 255, 255, .015);
+  --shadow: #0d1118;
+  --photo-bg: #1d2430;
+  --photo-img-bg: #252e3c;
+  --photo-rule: #2c3645;
+  --meter-bg: #2a3444;
+  --empty-bg: #1f2733;
+  --counter-border: #3a4658;
+  --chart-border: #2c3645;
+  --chart-axis: #4a586d;
+  --bar: #5b6d86;
+  --bar-zero: #252e3c;
+  --badge-bg: #1d2430;
+  --c-text: #4cc3f0; --c-text-fg: #0d1118;
+  --c-image: #8b7cf6; --c-image-fg: #0d1118;
+  --c-face: #f6b26b; --c-face-fg: #0d1118;
+  --c-record: #f47c8a; --c-record-fg: #0d1118;
+  --c-other: #3a4658; --c-other-fg: #e3e9f1;
+}
+
+body { font-family: "KH Sans", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif; }
+.box, .frame, .paper { border-color: var(--line); }
+.box { background: rgba(255, 255, 255, .015); border-radius: 6px; }
+.note { border-radius: 0 6px 6px 0; border-left-color: var(--red); }
+.rule-thick { background: linear-gradient(90deg, var(--red), #8b7cf6); }
+.score { color: #fff; }
+.mast-title { font-weight: 700; }
+.bars i.peak { background: var(--red); }

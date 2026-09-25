@@ -1,6 +1,6 @@
 # 群友开盒 Kaihe-Plugin
 
-TRSS-Yunzai V3 插件，为群成员生成报纸风格的《群聊日报》「人物档案特刊」，支持 AI 撰写标题和记者手记。
+TRSS-Yunzai V3 插件，为群成员生成报纸风格的《个人档案》特刊，支持 AI 撰写标题和记者手记。
 适配 LLOneBot / NapCat（OneBot v11）。
 
 > **声明**：本插件的「开盒」仅为娱乐玩梗，**不查询**任何现实身份、住址、人际关系等个人信息。
@@ -18,12 +18,7 @@ git clone --depth=1 https://github.com/Tomato-0914/Kaihe-Plugin.git ./plugins/Ka
 
 依赖只有 `yaml` 和 `art-template`，TRSS-Yunzai 已自带，无需额外安装。
 
-报纸效果依赖衬线中文字体，服务器没有的话装一下：
-
-```bash
-sudo apt install fonts-noto-cjk      # Debian / Ubuntu
-fc-cache -fv
-```
+插件已自带版面所需字体（`resources/fonts`：思源宋体、思源黑体、霞鹜文楷 Lite、JetBrains Mono，均为 SIL OFL 许可，许可证见 `resources/fonts/licenses`），**服务器无需另装字体**。
 
 ## 指令
 
@@ -34,6 +29,9 @@ fc-cache -fv
 | `#开盒 123456789` | 按 QQ 号开盒（仅限本群成员） |
 | `#开盒更新` | 拉取最新版本并自动重启（仅主人） |
 | `#开盒强制更新` | 放弃本地对插件代码的改动，强制同步到最新版本（仅主人） |
+| `#开盒主题` | 查看主题列表与当前切换模式 |
+| `#开盒主题 黑金` | 切换到指定主题并改为固定模式，可写名称 / id / 序号（仅主人） |
+| `#开盒主题 轮换` | 切换模式：固定 / 轮换 / 随机（仅主人） |
 
 ## 配置
 
@@ -44,6 +42,23 @@ fc-cache -fv
 
 两种方式都会**保留配置文件里的注释**。插件更新后，默认配置中新增的配置项会自动补进 `config.yaml`，已有的设置不受影响。
 `config.yaml` 不受 git 管理，`#开盒强制更新` 也不会覆盖它。
+
+**版面主题**：`theme` 内置 8 套，锅巴里为下拉选择。
+
+| 主题 | 说明 |
+| --- | --- |
+| `default` | 经典黄底黑字（默认） |
+| `gold` | 黑底金字 |
+| `dossier` | 机密卷宗：牛皮纸 + 「绝密」斜章 |
+| `blueprint` | 蓝图档案：蓝底工程网格 |
+| `cyber` | 赛博终端：黑底荧光绿 + 扫描线 + 等宽字体 |
+| `ink` | 水墨宣纸：宣纸 + 朱砂印章 + 霞鹜文楷标题 |
+| `sakura` | 粉色手帐：点阵纸 + 圆角 |
+| `midnight` | 深夜模式：深灰蓝 + 青色点缀 |
+
+**主题切换**：`themeMode` 为 `fixed`（固定使用 `theme`）、`rotate`（按顺序轮换）或 `random`（每次随机，不连续重复）；`themePool` 限定参与轮换 / 随机的主题，留空为全部。
+
+想自定义主题，在 `resources/gazette/themes/` 放一个 css 文件即可（文件名即主题名，首行注释 `/* 名称 */` 为显示名，覆盖 `index.html` 中 `:root` 的颜色变量）。
 
 AI 使用任意 OpenAI 兼容接口，填好 `ai.apiKey` 即可；不填则用内置模板文案。
 

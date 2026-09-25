@@ -1,0 +1,50 @@
+/* 机密卷宗 */
+:root {
+  --paper: #d9bf8e;
+  --paper-deep: #cfb27d;
+  --ink: #2e1f12;
+  --ink-soft: #4d3722;
+  --muted: #7a5f3e;
+  --line: #4a3420;
+  --dash: #a88a5c;
+  --red: #a3241a;
+  --accent-title: #8e1f16;
+  --texture: rgba(90, 60, 25, .05);
+  --shadow: #a78c5c;
+  --photo-bg: #efe2c4;
+  --photo-img-bg: #d8c49c;
+  --photo-rule: #c9b183;
+  --meter-bg: #bfa373;
+  --empty-bg: #cdb482;
+  --counter-border: #8d7047;
+  --chart-border: #b89c6b;
+  --chart-axis: #8d7047;
+  --bar: #6b4c2c;
+  --bar-zero: #bda173;
+  --badge-bg: #e6d3ab;
+  --c-text: #3a2716; --c-text-fg: #ecdcb8;
+  --c-image: #7a5431; --c-image-fg: #ecdcb8;
+  --c-face: #a8834f; --c-face-fg: #2e1f12;
+  --c-record: #a3241a; --c-record-fg: #f3e2c0;
+  --c-other: #c4a878; --c-other-fg: #2e1f12;
+}
+
+/* 牛皮纸纤维纹理 */
+#container {
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(120, 80, 30, .08) 0 1px, transparent 2px),
+    radial-gradient(circle at 70% 60%, rgba(120, 80, 30, .06) 0 1px, transparent 2px),
+    repeating-linear-gradient(0deg, var(--texture) 0 1px, transparent 1px 5px);
+  background-size: 7px 7px, 11px 11px, auto;
+}
+/* 右上角“绝密”斜章 */
+.paper { position: relative; }
+.paper::after {
+  content: "绝  密";
+  position: absolute; top: 34px; right: 30px;
+  padding: 4px 14px; border: 3px double var(--red);
+  color: var(--red); font-size: 26px; font-weight: 900; letter-spacing: 6px;
+  transform: rotate(-14deg); opacity: .72;
+}
+.rank-stamp, .stamp { border-width: 2px; transform: rotate(-3deg); }
+.photo { box-shadow: 4px 4px 0 var(--shadow), 0 0 0 1px #b39b6e inset; }
