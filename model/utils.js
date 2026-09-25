@@ -9,6 +9,8 @@ export const K = {
   ai: (g, u) => `kaihe:ai:${g}:${u}`,
   cd: (g, u) => `kaihe:cd:${g}:${u}`,
   issue: 'kaihe:issue',
+  hist: key => `kaihe:hist:${key}`,
+  histDone: key => `kaihe:histdone:${key}`,
   themeRR: 'kaihe:theme:rr',
   themeLast: 'kaihe:theme:last'
 }

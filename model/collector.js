@@ -1,4 +1,5 @@
 import { fromOB } from './message.js'
+import { K } from './utils.js'
 
 /** 兼容 TRSS 返回的 Proxy 与原始 {data} 结构 */
 const unwrap = (r, field) => r?.[field] !== undefined ? r : r?.data
@@ -31,46 +32,50 @@ const ANCHORS = ['message_id', 'message_seq', 'real_id']
 let anchorField = null
 
 /**
- * 群聊历史缓存（内存）：每群保存已翻到的消息（解析后的精简记录 + 翻页锚点），
- * 再次开盒时只补拉最新消息，不够才从缓存最早一条继续往前翻。重启后清空。
- * { list: 记录（按时间升序）, ids: Set, complete: 已翻到群聊最早的消息, used, lock }
+ * 群聊历史缓存（Redis 列表 kaihe:hist:<bot>:<群>，每条为解析后的精简记录 + 翻页锚点，按时间升序）
+ * 再次开盒时只补拉最新消息，不够才从缓存最早一条继续往前翻；单群最多 historyMax 条，7 天未使用自动过期
  */
-const CACHE = new Map()
-const CACHE_GROUPS = 30
-
-function cacheOf (key) {
-  let c = CACHE.get(key)
-  if (!c) {
-    c = { list: [], ids: new Set(), complete: false, lock: Promise.resolve() }
-    CACHE.set(key, c)
-    if (CACHE.size > CACHE_GROUPS) {
-      const lru = [...CACHE.entries()].filter(([k]) => k !== key).sort((a, b) => a[1].used - b[1].used)[0]
-      if (lru) CACHE.delete(lru[0])
-    }
-  }
-  c.used = Date.now()
-  return c
-}
+const HIST_TTL = 7 * 86400
+const LOCKS = new Map()
 
 /**
  * 获取群聊历史（get_group_msg_history，每页 100 条），返回解析后的记录（按时间升序）
  * 1. 从最新一页往回补拉，直到与缓存衔接（通常 1 页）；翻满 maxPages 仍衔接不上则丢弃旧缓存
  * 2. 缓存中群聊真人消息 < groupCount 或目标成员消息 < userCount 时，从缓存最早一条继续往前翻
- * 缓存深度上限 maxPages × 100 条（超出丢弃最旧的），因此很少发言的成员重复开盒也不会每次都翻满
+ * 缓存深度上限 min(maxPages × 100, historyMax)，超出丢弃最旧的，因此很少发言的成员重复开盒也不会每次都翻满
  */
 export function getHistory (e, opts = {}) {
-  const c = cacheOf(`${e.self_id}:${e.group_id}`)
-  // 同群并发开盒时排队，避免重复翻页
-  const run = c.lock.then(() => fillHistory(e, c, opts))
-  c.lock = run.catch(() => {})
+  const key = `${e.self_id}:${e.group_id}`
+  // 同群并发开盒时排队，避免重复翻页、交错写缓存
+  const run = (LOCKS.get(key) || Promise.resolve()).then(() => fillHistory(e, key, opts))
+  const tail = run.catch(() => {})
+  LOCKS.set(key, tail)
+  tail.then(() => { if (LOCKS.get(key) === tail) LOCKS.delete(key) })
   return run
 }
 
-async function fillHistory (e, c, { groupCount = 150, uid, userCount = 0, maxPages = 30 } = {}) {
+async function loadCache (key) {
+  try {
+    const [raw, done] = await Promise.all([redis.lRange(K.hist(key), 0, -1), redis.get(K.histDone(key))])
+    const list = []
+    for (const s of raw || []) { try { list.push(JSON.parse(s)) } catch {} }
+    list.sort((a, b) => a.t - b.t)
+    return { list, ids: new Set(list.map(r => r.id)), complete: !!done }
+  } catch (err) {
+    logger.warn(`[群友开盒] 读取历史缓存失败：${err.message}`)
+    return { list: [], ids: new Set(), complete: false }
+  }
+}
+
+async function fillHistory (e, key, { groupCount = 150, uid, userCount = 0, maxPages = 30, historyMax = 3000 } = {}) {
   const bot = botOf(e)
-  const depth = Math.max(1, maxPages) * 100
+  const depth = Math.max(100, Math.min(Math.max(1, maxPages) * 100, historyMax || 3000))
+  const c = await loadCache(key)
   let reused = 0 // 本次复用的缓存条数（断档时为 0）
   let pages = 0
+  let reset = false
+  const appended = [] // 补拉到的新消息（升序）
+  const prepended = [] // 往前翻到的旧消息（升序）
 
   const fetchPage = async seq => {
     pages++
@@ -117,12 +122,14 @@ async function fillHistory (e, c, { groupCount = 150, uid, userCount = 0, maxPag
       if (!addFresh(await fetchOlder(oldest, id => fresh.has(id) || c.ids.has(id)))) break
     }
     if (!joined) { // 与旧缓存之间断档：旧缓存作废，以本次拉到的为准
+      reset = true
       c.list = []
       c.ids.clear()
       c.complete = false
     }
     reused = c.list.length
-    for (const r of fresh.values()) { c.list.push(r); c.ids.add(r.id) }
+    appended.push(...[...fresh.values()].sort((a, b) => a.t - b.t))
+    for (const r of appended) { c.list.push(r); c.ids.add(r.id) }
     c.list.sort((a, b) => a.t - b.t)
 
     /* ---------- 2. 缓存不够时继续往前翻 ---------- */
@@ -132,17 +139,19 @@ async function fillHistory (e, c, { groupCount = 150, uid, userCount = 0, maxPag
     while (!c.complete && c.list.length && c.list.length < depth && pages < maxPages && (human < groupCount || mine < userCount)) {
       const older = (await fetchOlder(c.list[0], id => c.ids.has(id))).map(toRecord).filter(r => !c.ids.has(r.id))
       if (!older.length) { c.complete = true; break } // 已到群聊最早的消息，或协议端不支持翻页
+      older.sort((a, b) => a.t - b.t)
       for (const r of older) {
         c.ids.add(r.id)
         if (isHuman(r)) human++
         if (uid && r.u == uid) mine++
       }
-      c.list.unshift(...older.sort((a, b) => a.t - b.t))
+      c.list.unshift(...older)
+      prepended.unshift(...older)
     }
 
     /* ---------- 3. 截断到深度上限（保留最新） ---------- */
     if (c.list.length > depth) {
-      for (const r of c.list.splice(0, c.list.length - depth)) c.ids.delete(r.id)
+      c.list.splice(0, c.list.length - depth)
       c.complete = false
       reused = Math.min(reused, c.list.length)
     }
@@ -150,11 +159,28 @@ async function fillHistory (e, c, { groupCount = 150, uid, userCount = 0, maxPag
     logger.warn(`[群友开盒] get_group_msg_history 失败：${err.message}`)
   }
 
+  /* ---------- 4. 增量写回 Redis ---------- */
+  try {
+    const hk = K.hist(key)
+    const m = redis.multi()
+    if (reset) m.del(hk)
+    if (appended.length) m.rPush(hk, appended.map(r => JSON.stringify(r)))
+    // LPUSH 逐个插到表头，按从新到旧的顺序推入后表头即为最旧的一条
+    if (prepended.length) m.lPush(hk, prepended.slice().reverse().map(r => JSON.stringify(r)))
+    m.lTrim(hk, -depth, -1)
+    m.expire(hk, HIST_TTL)
+    if (c.complete) m.set(K.histDone(key), '1', { EX: HIST_TTL })
+    else m.del(K.histDone(key))
+    await m.exec()
+  } catch (err) {
+    logger.warn(`[群友开盒] 写入历史缓存失败：${err.message}`)
+  }
+
   const human = c.list.filter(r => r.u && r.u != e.self_id).length
   const mine = uid ? c.list.filter(r => r.u == uid).length : 0
   logger.info(`[群友开盒] 拉取历史 ${pages} 页（复用缓存 ${reused} 条），共 ${c.list.length} 条，` +
     `真人消息 ${human} 条${uid ? `，目标成员 ${mine} 条` : ''}${c.complete ? '，已到群聊最早记录' : ''}`)
-  return c.list.slice()
+  return c.list
 }
 
 /**

@@ -75,7 +75,7 @@ export async function buildGazette (e, uid) {
 
   const [member, history, userLog, avatar] = await Promise.all([
     getMember(e, uid),
-    getHistory(e, { groupCount: groupSize, uid, userCount: userSize, maxPages: Number(c.maxPages) || 30 }),
+    getHistory(e, { groupCount: groupSize, uid, userCount: userSize, maxPages: Number(c.maxPages) || 30, historyMax: Number(c.record?.historyMax) || 3000 }),
     getUserLog(g, uid),
     getAvatar(uid)
   ])

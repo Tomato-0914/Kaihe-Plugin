@@ -48,6 +48,7 @@ export default [
   group('本地记录'),
   num('record.userMax', '每人保留发言', '作息 / 构成统计用', { min: 10, addonAfter: '条' }),
   num('record.groupMax', '每群保留消息', '拉取历史失败时兜底', { min: 10, addonAfter: '条' }),
+  num('record.historyMax', '每群历史缓存', 'Redis 中缓存的翻页结果上限，同群再次开盒直接复用；7 天未使用自动过期', { min: 100, max: 20000, step: 100, addonAfter: '条' }),
   num('record.keepDays', '保留天数', '按最后一次写入顺延', { min: 1, addonAfter: '天' }),
 
   group('头像追踪'),
