@@ -7,7 +7,6 @@ export const K = {
   nameSince: (g, u) => `kaihe:namesince:${g}:${u}`,
   avatar: u => `kaihe:avatar:${u}`,
   ai: (g, u) => `kaihe:ai:${g}:${u}`,
-  cd: (g, u) => `kaihe:cd:${g}:${u}`,
   issue: 'kaihe:issue',
   hist: key => `kaihe:hist:${key}`,
   histDone: key => `kaihe:histdone:${key}`,

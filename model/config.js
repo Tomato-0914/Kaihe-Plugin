@@ -115,7 +115,7 @@ export function getConfig () {
 
 /**
  * 写入配置（锅巴保存时调用），保留 config.yaml 的注释与格式
- * @param {Record<string, any>} data 扁平键值，如 { 'ai.apiKey': 'sk-xxx', cd: 60 }
+ * @param {Record<string, any>} data 扁平键值，如 { 'ai.apiKey': 'sk-xxx', scale: 1.5 }
  */
 export function saveConfig (data) {
   getConfig()

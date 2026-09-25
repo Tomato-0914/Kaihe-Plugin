@@ -16,7 +16,6 @@ export default [
     bottomHelpMessage: '留空表示所有群均启用',
     component: 'GSelectGroup'
   },
-  num('cd', '触发冷却', '同一用户两次开盒的间隔，主人不受限制', { addonAfter: '秒' }),
   { field: 'quote', label: '引用触发消息', bottomHelpMessage: '发送图片时是否引用触发消息', component: 'Switch' },
   num('scale', '渲染缩放', '1 = 760px 宽；1.5 更清晰，图片体积稍大', { min: 0.5, max: 3, step: 0.1 }),
   {
