@@ -26,9 +26,15 @@ const OBSOLETE = [
   ['avatar', 'intervalHours'] // 改为 avatar.intervalMinutes
 ]
 
+/** 挪了位置的配置项：[旧位置, 新位置]，启动时把用户填的值搬到新位置 */
+const MOVED = [
+  [['avatar', 'notify'], ['notify', 'avatar']],
+  [['avatar', 'notifyGroups'], ['notify', 'groups']]
+]
+
 /**
  * 插件更新后，把默认配置里新增的键（连同注释）补进 config.yaml；
- * 用户已有的值、注释、顺序都不动；同时移除已废弃的键。每次进程启动执行一次。
+ * 用户已有的值、注释、顺序都不动；同时迁移挪了位置的键、移除已废弃的键。每次进程启动执行一次。
  */
 function syncDefaults () {
   try {
@@ -52,12 +58,30 @@ function syncDefaults () {
     }
     walk(userDoc.contents, defDoc.contents, '')
 
+    // 新位置已由上面按默认值补齐（带注释），这里只把用户原来的值写进去
+    const moved = MOVED.filter(([from]) => userDoc.hasIn(from))
+    for (const [from, to] of moved) {
+      const value = userDoc.getIn(from, true)
+      const target = userDoc.getIn(to, true)
+      if (YAML.isScalar(value) && YAML.isScalar(target)) {
+        target.value = value.value
+      } else {
+        if (YAML.isNode(value) && YAML.isNode(target)) {
+          value.comment = target.comment
+          value.commentBefore = target.commentBefore
+        }
+        userDoc.setIn(to, value)
+      }
+      userDoc.deleteIn(from)
+    }
+
     const removed = OBSOLETE.filter(keys => userDoc.hasIn(keys))
     for (const keys of removed) userDoc.deleteIn(keys)
 
-    if (!added.length && !removed.length) return
+    if (!added.length && !moved.length && !removed.length) return
     fs.writeFileSync(USER, userDoc.toString(), 'utf8')
     if (added.length) logger.mark(`[群友开盒] config.yaml 已补充新配置项：${added.join('、')}`)
+    if (moved.length) logger.mark(`[群友开盒] config.yaml 配置项已迁移：${moved.map(([a, b]) => `${a.join('.')} → ${b.join('.')}`).join('、')}`)
     if (removed.length) logger.mark(`[群友开盒] config.yaml 已移除废弃配置项：${removed.map(k => k.join('.')).join('、')}`)
   } catch (err) {
     logger.error(`[群友开盒] 合并默认配置失败：${err.message}`)

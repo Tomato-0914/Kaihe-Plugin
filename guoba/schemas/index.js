@@ -33,7 +33,7 @@ export function getConfigData () {
   return {
     ...c,
     groups: (c.groups || []).map(String),
-    avatar: { ...c.avatar, notifyGroups: (c.avatar?.notifyGroups || []).map(String) }
+    notify: { ...c.notify, groups: (c.notify?.groups || []).map(String) }
   }
 }
 
@@ -44,8 +44,8 @@ export function setConfigData (data, { Result }) {
     for (const key of Object.keys(data)) if (key.startsWith('_')) delete data[key]
     const toIds = list => (list || []).map(Number).filter(Boolean)
     if ('groups' in data) data.groups = toIds(data.groups)
-    if ('avatar.notifyGroups' in data) data['avatar.notifyGroups'] = toIds(data['avatar.notifyGroups'])
-    if (Array.isArray(data.avatar?.notifyGroups)) data.avatar.notifyGroups = toIds(data.avatar.notifyGroups)
+    if ('notify.groups' in data) data['notify.groups'] = toIds(data['notify.groups'])
+    if (Array.isArray(data.notify?.groups)) data.notify.groups = toIds(data.notify.groups)
     const old = getConfig().ai || {}
     saveConfig(data)
     const now = getConfig().ai || {}

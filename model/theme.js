@@ -7,6 +7,11 @@ import { K } from './utils.js'
 /** 插件自带字体目录（模板渲染后写到 temp/html，须用绝对 file:// 地址引用） */
 export const FONT_DIR_URL = pathToFileURL(path.join(ROOT, 'resources', 'fonts')).href
 
+/** 报纸版面公共样式（个人档案与排行榜共用），字体目录换成绝对地址 */
+export function baseCss () {
+  return fs.readFileSync(path.join(ROOT, 'resources', 'gazette', 'common.css'), 'utf8').replaceAll('{{fontDir}}', FONT_DIR_URL)
+}
+
 const FONT_FILES = {
   'KH Serif': ['NotoSerifSC-VF.ttf'],
   'KH Sans': ['NotoSansSC-VF.ttf'],
