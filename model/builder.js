@@ -86,7 +86,7 @@ export async function buildGazette (e, uid) {
   const [names, nameSince, avatarInfo, issue] = await Promise.all([
     getNameHistory(g, uid),
     getNameSince(g, uid),
-    c.avatar?.enable ? checkAvatar(uid, 1).catch(() => null) : null,
+    c.avatar?.enable ? checkAvatar(uid, 60).catch(() => null) : null,
     redis.incr(K.issue)
   ])
 

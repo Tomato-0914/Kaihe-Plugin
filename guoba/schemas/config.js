@@ -52,7 +52,7 @@ export default [
 
   group('头像追踪'),
   { field: 'avatar.enable', label: '追踪头像变更', bottomHelpMessage: '比对头像指纹，成员发言时按间隔检测', component: 'Switch' },
-  num('avatar.intervalHours', '检测间隔', '可填小数，0.25 = 15 分钟；间隔越短，换头像通报越及时', { min: 0.1, step: 0.05, addonAfter: '小时' }),
+  num('avatar.intervalMinutes', '检测间隔', '同一成员两次检测的最短间隔；越短通报越及时，请求头像服务器也越频繁', { min: 1, addonAfter: '分钟' }),
   { field: 'avatar.notify', label: '换头像通报', bottomHelpMessage: '成员换头像后在群里发言，Bot 在该群发送「旧头像 ➜ 新头像」提示', component: 'Switch' },
   {
     field: 'avatar.notifyGroups',
