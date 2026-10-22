@@ -52,7 +52,14 @@ export default [
 
   group('头像追踪'),
   { field: 'avatar.enable', label: '追踪头像变更', bottomHelpMessage: '比对头像指纹，成员发言时按间隔检测', component: 'Switch' },
-  num('avatar.intervalHours', '检测间隔', '', { min: 1, addonAfter: '小时' }),
+  num('avatar.intervalHours', '检测间隔', '可填小数，0.25 = 15 分钟；间隔越短，换头像通报越及时', { min: 0.1, step: 0.05, addonAfter: '小时' }),
+  { field: 'avatar.notify', label: '换头像通报', bottomHelpMessage: '成员换头像后在群里发言，Bot 在该群发送「旧头像 ➜ 新头像」提示', component: 'Switch' },
+  {
+    field: 'avatar.notifyGroups',
+    label: '通报的群',
+    bottomHelpMessage: '留空表示所有启用的群',
+    component: 'GSelectGroup'
+  },
 
   group('AI 撰稿'),
   { field: 'ai.enable', label: '启用 AI', bottomHelpMessage: '未填 API Key 或调用失败时自动使用内置模板文案', component: 'Switch' },

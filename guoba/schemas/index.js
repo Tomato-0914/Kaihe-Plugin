@@ -30,7 +30,11 @@ export function getConfigData () {
   const c = getConfig()
   if (!modelOptions.length) prefetchModels()
   // GSelectGroup 以字符串群号匹配选项
-  return { ...c, groups: (c.groups || []).map(String) }
+  return {
+    ...c,
+    groups: (c.groups || []).map(String),
+    avatar: { ...c.avatar, notifyGroups: (c.avatar?.notifyGroups || []).map(String) }
+  }
 }
 
 /* -------------- 写入配置（保留 config.yaml 注释） -------------- */
@@ -38,7 +42,10 @@ export function setConfigData (data, { Result }) {
   try {
     // 以 _ 开头的是按钮等非配置项
     for (const key of Object.keys(data)) if (key.startsWith('_')) delete data[key]
-    if ('groups' in data) data.groups = (data.groups || []).map(Number).filter(Boolean)
+    const toIds = list => (list || []).map(Number).filter(Boolean)
+    if ('groups' in data) data.groups = toIds(data.groups)
+    if ('avatar.notifyGroups' in data) data['avatar.notifyGroups'] = toIds(data['avatar.notifyGroups'])
+    if (Array.isArray(data.avatar?.notifyGroups)) data.avatar.notifyGroups = toIds(data.avatar.notifyGroups)
     const old = getConfig().ai || {}
     saveConfig(data)
     const now = getConfig().ai || {}

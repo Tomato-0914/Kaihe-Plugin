@@ -68,6 +68,7 @@ AI 使用任意 OpenAI 兼容接口，填好 `ai.apiKey` 即可；不填则用�
 - **行为分析 / AI 上下文**：`get_group_msg_history` 向前翻页拉取群聊历史，直到取到该成员最近 `userSample` 条消息（默认 100，最多翻 `maxPages` 页），并与插件本地记录合并；群聊占比按最近 `sampleSize` 条群消息计算。翻到的记录按群缓存在 Redis（`kaihe:hist:*`，单群最多 `record.historyMax` 条，默认 3000，7 天未使用自动过期），同群再次开盒只补拉最新消息，通常 1 次请求，重启后仍可复用
 - **作息、曾用名、头像变更**：插件加载后被动记录，存于 Redis（`kaihe:*`），**装得越久越准**
 - 头像变更通过比对头像指纹判断，成员发言时按 `avatar.intervalHours` 间隔检测
+- **换头像通报**（`avatar.notify`，默认开启）：成员换了头像后在群里发言，Bot 会在该群发送「旧头像 ➜ 新头像」提示；可用 `avatar.notifyGroups` 限定通报的群。旧头像图片缓存在 Redis（`kaihe:avatarimg:*`），插件更新前已入档的成员首次通报只展示新头像
 
 ## 活跃评分（满分 100）
 
