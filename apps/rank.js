@@ -39,7 +39,7 @@ export class Rank extends plugin {
       }
       const img = await puppeteer.screenshot('kaihe-rank', data)
       if (!img) {
-        await this.reply('排版失败，请查看控制台日志。', true)
+        await this.reply('榜单渲染失败，请查看控制台日志。', true)
         return true
       }
       await this.reply(img, !!c.quote)

@@ -40,7 +40,7 @@ const STYLE = {
 }
 
 function defaultNote (f, dominant) {
-  let s = `据本报记者调查，${f.name}（档案号：${f.uid}）`
+  let s = `据档案记载，${f.name}（档案号：${f.uid}）`
   if (f.days === null) s += '入群时间已不可考。'
   else if (f.days === 0) s += '于今日加入本群，是一张新鲜面孔。'
   else s += `自 ${f.joinDate} 加入本群，迄今已满 ${f.days} 天。`
@@ -54,7 +54,7 @@ function defaultNote (f, dominant) {
   return s
 }
 
-/** 记者手记加粗：人名、数字、百分比、「评级」 */
+/** 档案员手记加粗：人名、数字、百分比、「评级」 */
 function noteToHtml (note, name) {
   let h = escapeHtml(note)
   const n = escapeHtml(name)

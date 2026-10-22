@@ -6,7 +6,7 @@ export class Kaihe extends plugin {
   constructor () {
     super({
       name: '群友开盒',
-      dsc: '娱乐向“开盒”：用群内公开资料生成群成员人物档案日报（支持 AI 撰稿）',
+      dsc: '娱乐向“开盒”：用群内公开资料生成群成员个人档案（支持 AI 撰写）',
       event: 'message.group',
       priority: 500,
       rule: [
@@ -28,7 +28,7 @@ export class Kaihe extends plugin {
     const uid = Number(atSeg ? (atSeg.qq ?? atSeg.data?.qq) : qqArg || e.user_id)
 
     if (c.ai?.enable && c.ai.apiKey) {
-      await this.reply('📰 本报记者正在调查取证，请稍候…', false, { recallMsg: 15 })
+      await this.reply('📂 档案室正在调阅资料，请稍候…', false, { recallMsg: 15 })
     }
 
     try {
@@ -39,13 +39,13 @@ export class Kaihe extends plugin {
       }
       const img = await puppeteer.screenshot('kaihe', data)
       if (!img) {
-        await this.reply('排版失败，请查看控制台日志。', true)
+        await this.reply('档案渲染失败，请查看控制台日志。', true)
         return true
       }
       await this.reply(img, !!c.quote)
     } catch (err) {
       logger.error('[群友开盒] 生成失败', err)
-      await this.reply(`日报生成失败：${err.message}`, true)
+      await this.reply(`档案生成失败：${err.message}`, true)
     }
     return true
   }
