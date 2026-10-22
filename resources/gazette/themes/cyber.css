@@ -42,4 +42,3 @@ body {
 .note { border-left-color: var(--ink); }
 .bars i.peak { background: var(--red); box-shadow: 0 0 8px rgba(255, 59, 107, .6); }
 .photo { border-color: var(--line); }
-.photo img { filter: grayscale(.35) sepia(.3) hue-rotate(70deg) saturate(1.6) contrast(1.05); }

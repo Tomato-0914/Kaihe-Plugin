@@ -24,6 +24,22 @@ export async function getMember (e, uid) {
   return null
 }
 
+/** 群成员列表（OneBot v11: get_group_member_list） */
+export async function getMemberList (e) {
+  try {
+    const r = await botOf(e).sendApi('get_group_member_list', { group_id: e.group_id })
+    const list = Array.isArray(r) ? r : r?.data
+    if (Array.isArray(list) && list.length) return list
+  } catch (err) {
+    logger.debug(`[群友开盒] get_group_member_list 失败：${err.message}`)
+  }
+  try {
+    const map = await e.group?.getMemberMap?.()
+    if (map?.size) return [...map.values()]
+  } catch {}
+  return []
+}
+
 /**
  * 翻页锚点：各协议端对 get_group_msg_history 的 message_seq 参数理解不同
  * （NapCat / LLOneBot 认 message_id，go-cqhttp / Lagrange 认真实 seq），依次尝试并记住可用的字段

@@ -53,13 +53,19 @@ export default [
   group('头像追踪'),
   { field: 'avatar.enable', label: '追踪头像变更', bottomHelpMessage: '比对头像指纹，成员发言时按间隔检测', component: 'Switch' },
   num('avatar.intervalMinutes', '检测间隔', '同一成员两次检测的最短间隔；越短通报越及时，请求头像服务器也越频繁', { min: 1, addonAfter: '分钟' }),
-  { field: 'avatar.notify', label: '换头像通报', bottomHelpMessage: '成员换头像后在群里发言，Bot 在该群发送「旧头像 ➜ 新头像」提示', component: 'Switch' },
+
+  group('群内通报'),
+  { field: 'notify.avatar', label: '换头像通报', bottomHelpMessage: '成员换头像后在群里发言，Bot 在该群发送「旧头像 ➜ 新头像」提示（需开启头像追踪）', component: 'Switch' },
+  { field: 'notify.name', label: '改名通报', bottomHelpMessage: '成员改了群名片（没有群名片时为昵称）后在群里发言，Bot 在该群发送新旧名字', component: 'Switch' },
   {
-    field: 'avatar.notifyGroups',
+    field: 'notify.groups',
     label: '通报的群',
     bottomHelpMessage: '留空表示所有启用的群',
     component: 'GSelectGroup'
   },
+
+  group('排行榜'),
+  num('rank.limit', '显示人数', '#换头大王 等排行榜显示的人数', { min: 3, max: 50, addonAfter: '人' }),
 
   group('AI 撰稿'),
   { field: 'ai.enable', label: '启用 AI', bottomHelpMessage: '未填 API Key 或调用失败时自动使用内置模板文案', component: 'Switch' },

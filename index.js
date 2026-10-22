@@ -3,6 +3,7 @@ import path from 'node:path'
 import { Kaihe } from './apps/kaihe.js'
 import { Update } from './apps/update.js'
 import { Theme } from './apps/theme.js'
+import { Rank } from './apps/rank.js'
 import { record } from './model/recorder.js'
 import { ROOT, getConfig } from './model/config.js'
 
@@ -39,4 +40,4 @@ getConfig()
 
 logger.mark(`[群友开盒] ${version()} 加载完成，配置热重载已开启，发送 #开盒 试试`)
 
-export const apps = { Kaihe, Update, Theme }
+export const apps = { Kaihe, Update, Theme, Rank }

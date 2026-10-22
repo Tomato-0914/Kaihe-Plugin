@@ -1,12 +1,12 @@
 import crypto from 'node:crypto'
 import { getConfig, groupEnabled } from './config.js'
 import { fromEvent } from './message.js'
-import { avatarMeta } from './collector.js'
+import { avatarMeta, getMember } from './collector.js'
 import { K, now, fmtShort } from './utils.js'
 
 const parse = list => list.map(s => { try { return JSON.parse(s) } catch { return null } }).filter(Boolean)
 
-/** 每条群消息调用：记录发言元数据、昵称变化、头像变化 */
+/** 每条群消息调用：记录发言元数据、昵称变化、头像变化，并按配置通报改名 / 换头像 */
 export async function record (e) {
   try {
     if (!e?.group_id || !e.user_id || e.user_id == e.self_id) return
@@ -27,7 +27,8 @@ export async function record (e) {
       .expire(K.groupLog(g), ttl)
       .exec()
 
-    await trackName(g, u, e.sender?.card || e.sender?.nickname)
+    const oldName = await trackName(g, u, await confirmName(e, e.sender?.card || e.sender?.nickname))
+    if (oldName) notifyName(e, oldName).catch(err => logger.debug(`[群友开盒] 改名通报失败：${err.message}`))
     if (c.avatar?.enable) {
       checkAvatar(u, Math.max(1, Number(c.avatar.intervalMinutes) || 5))
         .then(info => info.changed && notifyAvatar(e, info))
@@ -38,7 +39,19 @@ export async function record (e) {
   }
 }
 
-/** 群名片 / 昵称变更时记入曾用名 */
+/**
+ * 发言里的名字与记录不同时，向协议端确认一次再采信：
+ * 个别消息上报的群名片可能缺失或是旧缓存，直接采信会记下并通报一次并不存在的改名
+ */
+async function confirmName (e, name) {
+  if (!name) return name
+  const old = await redis.get(K.name(e.group_id, e.user_id))
+  if (!old || old === name) return name
+  const m = await getMember(e, e.user_id)
+  return m?.card || m?.nickname || name
+}
+
+/** 群名片 / 昵称变更时记入曾用名；发生改名时返回旧名字 */
 export async function trackName (g, u, name) {
   if (!name) return
   const key = K.name(g, u)
@@ -48,10 +61,21 @@ export async function trackName (g, u, name) {
   if (old) {
     await redis.lPush(K.names(g, u), JSON.stringify({ name: old, t: now() }))
     await redis.lTrim(K.names(g, u), 0, 19)
+    // 曾用名只留 20 条，改名次数单独计；旧数据首次计数时以曾用名条数为准
+    if (await redis.incr(K.nameCount(g, u)) === 1) {
+      const len = await redis.lLen(K.names(g, u))
+      if (len > 1) await redis.set(K.nameCount(g, u), String(len))
+    }
+    return old
   } else {
     // 首次入档时间：用于“入档以来未曾改名”
     await redis.set(K.nameSince(g, u), String(now()), { NX: true })
   }
+}
+
+/** 入档以来的改名次数 */
+export async function getNameCount (g, u) {
+  return Number(await redis.get(K.nameCount(g, u))) || await redis.lLen(K.names(g, u))
 }
 
 export async function getNameSince (g, u) {
@@ -100,12 +124,18 @@ export async function checkAvatar (u, intervalMinutes = 5) {
   return changed ? Object.assign(out, { changed, kind: meta.kind, img, prev }) : out
 }
 
+/** 该群是否通报：notify.groups 留空表示所有启用的群 */
+function notifyHere (c, g) {
+  const list = (c.notify?.groups || []).map(String)
+  return !list.length || list.includes(String(g))
+}
+
+const groupOf = e => e.group || e.bot?.pickGroup?.(e.group_id) || Bot.pickGroup(e.group_id)
+
 /** 换头像通报：成员换头像后在群里发言时，往该群发送「旧头像 → 新头像」 */
 async function notifyAvatar (e, info) {
   const c = getConfig()
-  if (!c.avatar?.notify) return
-  const list = (c.avatar.notifyGroups || []).map(String)
-  if (list.length && !list.includes(String(e.group_id))) return
+  if (!c.notify?.avatar || !notifyHere(c, e.group_id)) return
   // 只通报拿到了真实头像的变更；旧图与新图完全一致（重新上传同一张）也不通报
   if (info.kind !== 'custom' && info.kind !== 'system') return
   if (info.prev && crypto.createHash('md5').update(Buffer.from(info.prev, 'base64')).digest('hex') === info.hash) return
@@ -117,9 +147,23 @@ async function notifyAvatar (e, info) {
   const img = b64 => segment.image(`base64://${b64}`)
   const msg = info.prev ? [head, img(info.prev), ' ➜ ', img(info.img)] : [head, img(info.img)]
 
-  const group = e.group || e.bot?.pickGroup?.(e.group_id) || Bot.pickGroup(e.group_id)
-  await group.sendMsg(msg)
+  await groupOf(e).sendMsg(msg)
   logger.mark(`[群友开盒] 群 ${e.group_id} 成员 ${name}(${e.user_id}) 更换了头像，已通报`)
+}
+
+/** 改名通报：成员改了群名片 / 昵称后在群里发言时，往该群发送新旧名字 */
+async function notifyName (e, old) {
+  const c = getConfig()
+  if (!c.notify?.name || !notifyHere(c, e.group_id)) return
+  const g = e.group_id
+  const u = e.user_id
+  const [name, names, count] = await Promise.all([redis.get(K.name(g, u)), getNameHistory(g, u), getNameCount(g, u)])
+  // 第一条就是刚停用的旧名字，往后取更早的、去重
+  const earlier = [...new Set(names.slice(1).map(n => n.name))].filter(n => n !== name && n !== old).slice(0, 3)
+  const msg = `✏️ 改名通报\n「${old}」(${u}) 改名为「${name}」\n入档以来第 ${count} 次改名` +
+    (earlier.length ? `\n更早的曾用名：${earlier.map(n => `「${n}」`).join('、')}` : '')
+  await groupOf(e).sendMsg(msg)
+  logger.mark(`[群友开盒] 群 ${g} 成员 ${old} → ${name}(${u}) 改名，已通报`)
 }
 
 export async function getUserLog (g, u) {

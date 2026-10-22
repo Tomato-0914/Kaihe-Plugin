@@ -4,7 +4,7 @@ import { ROOT, getConfig } from './config.js'
 import { getMember, getHistory, getAvatar } from './collector.js'
 import { getUserLog, getGroupLog, getNameHistory, getNameSince, trackName, checkAvatar } from './recorder.js'
 import { writeStory } from './ai.js'
-import { themeCss, themeFonts, pickTheme, FONT_DIR_URL } from './theme.js'
+import { baseCss, themeCss, themeFonts, pickTheme, FONT_DIR_URL } from './theme.js'
 import {
   K, now, pad, escapeHtml, tzParts, dayNum, hourOf, fmtDate, fmtDateCN, fmtHM, fmtShort, ago, cnNum, percents
 } from './utils.js'
@@ -270,6 +270,7 @@ export async function buildGazette (e, uid) {
     tplFile: TPL,
     saveId: `${g}_${uid}`,
     scale: Number(c.scale) || 1,
+    baseCss: baseCss(),
     themeCss: css,
     fontDir: FONT_DIR_URL,
     fontPreload: themeFonts(css),
