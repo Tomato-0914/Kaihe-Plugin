@@ -21,9 +21,14 @@ function merge (base, over) {
   return out
 }
 
+/** 已废弃的配置项，启动时从 config.yaml 中移除 */
+const OBSOLETE = [
+  ['avatar', 'intervalHours'] // 改为 avatar.intervalMinutes
+]
+
 /**
  * 插件更新后，把默认配置里新增的键（连同注释）补进 config.yaml；
- * 用户已有的值、注释、顺序都不动。每次进程启动执行一次。
+ * 用户已有的值、注释、顺序都不动；同时移除已废弃的键。每次进程启动执行一次。
  */
 function syncDefaults () {
   try {
@@ -46,9 +51,14 @@ function syncDefaults () {
       }
     }
     walk(userDoc.contents, defDoc.contents, '')
-    if (!added.length) return
+
+    const removed = OBSOLETE.filter(keys => userDoc.hasIn(keys))
+    for (const keys of removed) userDoc.deleteIn(keys)
+
+    if (!added.length && !removed.length) return
     fs.writeFileSync(USER, userDoc.toString(), 'utf8')
-    logger.mark(`[群友开盒] config.yaml 已补充新配置项：${added.join('、')}`)
+    if (added.length) logger.mark(`[群友开盒] config.yaml 已补充新配置项：${added.join('、')}`)
+    if (removed.length) logger.mark(`[群友开盒] config.yaml 已移除废弃配置项：${removed.map(k => k.join('.')).join('、')}`)
   } catch (err) {
     logger.error(`[群友开盒] 合并默认配置失败：${err.message}`)
   }

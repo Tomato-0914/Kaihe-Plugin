@@ -29,7 +29,7 @@ export async function record (e) {
 
     await trackName(g, u, e.sender?.card || e.sender?.nickname)
     if (c.avatar?.enable) {
-      checkAvatar(u, Number(c.avatar.intervalHours) || 6)
+      checkAvatar(u, Math.max(1, Number(c.avatar.intervalMinutes) || 5))
         .then(info => info.changed && notifyAvatar(e, info))
         .catch(err => logger.debug(`[群友开盒] 头像检测失败：${err.message}`))
     }
@@ -64,11 +64,11 @@ export async function getNameSince (g, u) {
  * 返回 { hash, bcheck, count, since, changedAt, checkedAt }；
  * 本次检测到变更时另带 changed / kind / img（新头像 base64）/ prev（旧头像 base64，可能为空）
  */
-export async function checkAvatar (u, intervalHours = 6) {
+export async function checkAvatar (u, intervalMinutes = 5) {
   const key = K.avatar(u)
   const info = await redis.hGetAll(key) || {}
   const t = now()
-  if (info.checkedAt && t - Number(info.checkedAt) < intervalHours * 3600) return info
+  if (info.checkedAt && t - Number(info.checkedAt) < intervalMinutes * 60) return info
 
   await redis.hSet(key, 'checkedAt', String(t)) // 先占位，避免并发重复下载
   const res = await fetch(`https://q1.qlogo.cn/g?b=qq&nk=${u}&s=100`, { signal: AbortSignal.timeout(8000) })
