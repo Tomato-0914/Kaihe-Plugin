@@ -10,6 +10,9 @@ const parse = list => list.map(s => { try { return JSON.parse(s) } catch { retur
 export async function record (e) {
   try {
     if (!e?.group_id || !e.user_id || e.user_id == e.self_id) return
+    // 官方机器人（QQBot）只拿得到 QQ 昵称、拿不到群名片，用它的数据会和野生号来回“改名”；
+    // 开了全量消息后同一条消息两个号都会收到，也会重复记录，所以只认野生号上报的消息
+    if ((e.bot?.adapter?.id || e.adapter_id) === 'QQBot') return
     const c = getConfig()
     if (!groupEnabled(c, e.group_id)) return
 
