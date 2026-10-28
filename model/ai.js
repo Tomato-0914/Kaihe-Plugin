@@ -64,12 +64,15 @@ export async function listModels (baseURL, apiKey) {
 
 /** 调用 AI 生成标题 / 档案员手记 / 趣味称号；失败抛错，由调用方回退模板 */
 export async function writeStory (ai, facts, mine, sample, tz) {
+  // 锅巴里的 deepseek-flash 只是占位提示，留空时接口会报“模型名为空”，这里给出明确提示
+  const model = String(ai.model ?? '').trim()
+  if (!model) throw new Error('未填写模型 id（ai.model），请在锅巴「模型」或 config.yaml 中填写，如 deepseek-flash')
   const url = `${String(ai.baseURL).replace(/\/+$/, '')}/chat/completions`
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ai.apiKey}` },
     body: JSON.stringify({
-      model: ai.model,
+      model,
       temperature: Number(ai.temperature ?? 0.9),
       messages: [
         { role: 'system', content: SYSTEM },

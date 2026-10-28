@@ -28,7 +28,13 @@ export class Kaihe extends plugin {
     const uid = Number(atSeg ? (atSeg.qq ?? atSeg.data?.qq) : qqArg || e.user_id)
 
     if (c.ai?.enable && c.ai.apiKey) {
-      await this.reply('📂 档案室正在调阅资料，请稍候…', false, { recallMsg: 15 })
+      // 不用 reply 的 recallMsg：Yunzai 到点会连同触发指令的消息一起撤回，机器人是管理员时群友的 #开盒 也会被撤
+      const tip = await this.reply('📂 档案室正在调阅资料，请稍候…')
+      if (tip?.message_id) {
+        setTimeout(async () => {
+          try { await e.group?.recallMsg?.(tip.message_id) } catch {}
+        }, 15000)
+      }
     }
 
     try {

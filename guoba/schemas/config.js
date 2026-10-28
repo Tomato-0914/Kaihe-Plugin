@@ -83,7 +83,7 @@ export default [
     bottomHelpMessage: '填模型 id（非显示名），可手动输入，也可在下拉中选择',
     component: 'AutoComplete',
     // 不按输入过滤：已填了模型时也能看到全部候选
-    componentProps: { options: modelOptions, filterOption: false, allowClear: true, placeholder: 'deepseek-flash' }
+    componentProps: { options: modelOptions, filterOption: false, allowClear: true, placeholder: '必填，例：deepseek-flash' }
   },
   {
     field: '_fetchModels',
