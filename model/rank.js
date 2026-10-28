@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { ROOT, getConfig } from './config.js'
-import { getMemberList } from './collector.js'
+import { apiBot, getMemberList } from './collector.js'
 import { baseCss, themeCss, themeFonts, pickTheme, FONT_DIR_URL } from './theme.js'
 import { K, now, fmtDate, fmtDateCN, fmtHM } from './utils.js'
 
@@ -95,7 +95,8 @@ export async function buildRank (e, name, focus = []) {
   const g = e.group_id
   const limit = Math.max(3, Number(c.rank?.limit) || 20)
 
-  const members = (await getMemberList(e)).filter(m => m.user_id && m.user_id != e.self_id)
+  const bots = new Set([e.self_id, apiBot(e).id].map(String))
+  const members = (await getMemberList(e)).filter(m => m.user_id && !bots.has(String(m.user_id)))
   const data = board.load ? await board.load(g, members) : null
   const ranked = members
     .map(m => ({ m, v: board.value(m, data) }))

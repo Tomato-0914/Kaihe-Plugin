@@ -1,7 +1,7 @@
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { ROOT, getConfig } from './config.js'
-import { getMember, getHistory, getAvatar } from './collector.js'
+import { apiBot, getMember, getHistory, getAvatar } from './collector.js'
 import { getUserLog, getGroupLog, getNameHistory, getNameSince, trackName, checkAvatar } from './recorder.js'
 import { writeStory } from './ai.js'
 import { baseCss, themeCss, themeFonts, pickTheme, FONT_DIR_URL } from './theme.js'
@@ -91,8 +91,9 @@ export async function buildGazette (e, uid) {
   ])
 
   /* ---------- 样本 ---------- */
-  // 群聊样本：最近 groupSize 条真人消息（群聊占比、AI 上下文）
-  const human = history.filter(m => m.u && m.u != e.self_id)
+  // 群聊样本：最近 groupSize 条真人消息（群聊占比、AI 上下文）；官方机器人借用野生号查询时两个号都排除
+  const bots = new Set([e.self_id, apiBot(e).id].map(String))
+  const human = history.filter(m => m.u && !bots.has(String(m.u)))
   let sample = human.slice(-groupSize)
   if (sample.length < 10) {
     const local = await getGroupLog(g, groupSize)

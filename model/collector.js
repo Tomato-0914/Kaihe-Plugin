@@ -8,10 +8,31 @@ function botOf (e) {
   return e.bot || Bot[e.self_id]
 }
 
+const isQQBot = bot => bot?.adapter?.id === 'QQBot'
+
+/**
+ * 查资料用的协议端 { bot, id, group_id }
+ * 官方机器人（QQBot）没有群成员资料、成员列表和群聊历史接口，改用同群的野生号（OneBot）查询；
+ * 同群没有野生号时仍用当前机器人，查不到的资料显示为未知
+ */
+export function apiBot (e) {
+  const bot = botOf(e)
+  if (isQQBot(bot)) {
+    const gid = Number(e.group_id)
+    for (const id of Bot.uin || []) {
+      const b = Bot[id]
+      if (b === bot || isQQBot(b) || typeof b?.sendApi !== 'function') continue
+      if (b.gl?.has(gid) || b.gl?.has(String(e.group_id))) return { bot: b, id, group_id: gid }
+    }
+  }
+  return { bot, id: e.self_id, group_id: e.group_id }
+}
+
 /** 群成员信息（OneBot v11: get_group_member_info） */
 export async function getMember (e, uid) {
+  const api = apiBot(e)
   try {
-    const r = await botOf(e).sendApi('get_group_member_info', { group_id: e.group_id, user_id: uid, no_cache: true })
+    const r = await api.bot.sendApi('get_group_member_info', { group_id: api.group_id, user_id: uid, no_cache: true })
     const d = unwrap(r, 'user_id')
     if (d?.user_id) return d
   } catch (err) {
@@ -26,8 +47,9 @@ export async function getMember (e, uid) {
 
 /** 群成员列表（OneBot v11: get_group_member_list） */
 export async function getMemberList (e) {
+  const api = apiBot(e)
   try {
-    const r = await botOf(e).sendApi('get_group_member_list', { group_id: e.group_id })
+    const r = await api.bot.sendApi('get_group_member_list', { group_id: api.group_id })
     const list = Array.isArray(r) ? r : r?.data
     if (Array.isArray(list) && list.length) return list
   } catch (err) {
@@ -61,9 +83,11 @@ const LOCKS = new Map()
  * 缓存深度上限 min(maxPages × 100, historyMax)，超出丢弃最旧的，因此很少发言的成员重复开盒也不会每次都翻满
  */
 export function getHistory (e, opts = {}) {
-  const key = `${e.self_id}:${e.group_id}`
+  const api = apiBot(e)
+  // 缓存按实际查询的协议端区分：官方机器人借用野生号时与野生号共用缓存
+  const key = `${api.id}:${api.group_id}`
   // 同群并发开盒时排队，避免重复翻页、交错写缓存
-  const run = (LOCKS.get(key) || Promise.resolve()).then(() => fillHistory(e, key, opts))
+  const run = (LOCKS.get(key) || Promise.resolve()).then(() => fillHistory(api, key, opts))
   const tail = run.catch(() => {})
   LOCKS.set(key, tail)
   tail.then(() => { if (LOCKS.get(key) === tail) LOCKS.delete(key) })
@@ -83,8 +107,7 @@ async function loadCache (key) {
   }
 }
 
-async function fillHistory (e, key, { groupCount = 150, uid, userCount = 0, maxPages = 30, historyMax = 3000 } = {}) {
-  const bot = botOf(e)
+async function fillHistory ({ bot, id: selfId, group_id }, key, { groupCount = 150, uid, userCount = 0, maxPages = 30, historyMax = 3000 } = {}) {
   const depth = Math.max(100, Math.min(Math.max(1, maxPages) * 100, historyMax || 3000))
   const c = await loadCache(key)
   let reused = 0 // 本次复用的缓存条数（断档时为 0）
@@ -95,11 +118,11 @@ async function fillHistory (e, key, { groupCount = 150, uid, userCount = 0, maxP
 
   const fetchPage = async seq => {
     pages++
-    const r = await bot.sendApi('get_group_msg_history', { group_id: e.group_id, message_seq: seq, count: 100 })
+    const r = await bot.sendApi('get_group_msg_history', { group_id, message_seq: seq, count: 100 })
     const msgs = unwrap(r, 'messages')?.messages
     return Array.isArray(msgs) ? msgs : []
   }
-  const toRecord = m => ({ ...fromOB(m, e.self_id), a: { message_id: m.message_id, message_seq: m.message_seq, real_id: m.real_id } })
+  const toRecord = m => ({ ...fromOB(m, selfId), a: { message_id: m.message_id, message_seq: m.message_seq, real_id: m.real_id } })
   /** 以 rec 为锚点取更早的一页：依次尝试各锚点字段，返回原始消息（无更早消息时为空） */
   const fetchOlder = async (rec, isKnown) => {
     const fields = anchorField ? [anchorField, ...ANCHORS.filter(f => f !== anchorField)] : ANCHORS
@@ -149,7 +172,7 @@ async function fillHistory (e, key, { groupCount = 150, uid, userCount = 0, maxP
     c.list.sort((a, b) => a.t - b.t)
 
     /* ---------- 2. 缓存不够时继续往前翻 ---------- */
-    const isHuman = r => r.u && r.u != e.self_id
+    const isHuman = r => r.u && r.u != selfId
     let human = c.list.filter(isHuman).length
     let mine = uid ? c.list.filter(r => r.u == uid).length : 0
     while (!c.complete && c.list.length && c.list.length < depth && pages < maxPages && (human < groupCount || mine < userCount)) {
@@ -192,7 +215,7 @@ async function fillHistory (e, key, { groupCount = 150, uid, userCount = 0, maxP
     logger.warn(`[群友开盒] 写入历史缓存失败：${err.message}`)
   }
 
-  const human = c.list.filter(r => r.u && r.u != e.self_id).length
+  const human = c.list.filter(r => r.u && r.u != selfId).length
   const mine = uid ? c.list.filter(r => r.u == uid).length : 0
   logger.info(`[群友开盒] 拉取历史 ${pages} 页（复用缓存 ${reused} 条），共 ${c.list.length} 条，` +
     `真人消息 ${human} 条${uid ? `，目标成员 ${mine} 条` : ''}${c.complete ? '，已到群聊最早记录' : ''}`)
