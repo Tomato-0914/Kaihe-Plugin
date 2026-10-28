@@ -250,9 +250,13 @@ export async function buildGazette (e, uid) {
 
   let story = null
   if (c.ai?.enable && c.ai.apiKey) {
-    // 缓存键带上 AI 配置指纹：改了模型 / 温度等设置后旧稿件自动失效
+    // 缓存键带上 AI 配置与档案关键资料的指纹：改了模型 / 温度等设置，或名字、身份、等级、入群时间、评级变化后旧稿件自动失效
+    // （评分随发言小幅波动，不计入，否则缓存几乎不生效）
     const { baseURL, model, temperature, contextSize, userSize: aiUserSize } = c.ai
-    const fp = crypto.createHash('md5').update(JSON.stringify([baseURL, model, temperature, contextSize, aiUserSize])).digest('hex').slice(0, 8)
+    const fp = crypto.createHash('md5').update(JSON.stringify([
+      baseURL, model, temperature, contextSize, aiUserSize,
+      facts.name, facts.role, facts.level, facts.joinDate, facts.rank
+    ])).digest('hex').slice(0, 8)
     const key = `${K.ai(g, uid)}:${fp}`
     try { story = JSON.parse(await redis.get(key) || 'null') } catch {}
     if (!story) {
